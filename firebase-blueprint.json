@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "UserProfile": {
+      "collection": "users",
+      "fields": {
+        "id": { "type": "string", "description": "User ID matching auth UID" },
+        "firstName": { "type": "string", "description": "First legal name" },
+        "email": { "type": "string", "description": "User email address" },
+        "ageRange": { "type": "string", "description": "Age bracket" },
+        "country": { "type": "string", "description": "Country of tax residence" },
+        "experienceLevel": { "type": "string", "description": "Investing experience level" },
+        "primaryGoal": { "type": "string", "description": "Primary wealth building objective" },
+        "timeHorizon": { "type": "string", "description": "Investment time horizon" },
+        "monthlyCapacity": { "type": "string", "description": "Monthly contribution capacity" },
+        "riskProfile": { "type": "string", "description": "Calculated risk tolerance" },
+        "xp": { "type": "number", "description": "Gamified learning XP points" },
+        "streakDays": { "type": "number", "description": "Consecutive days active" },
+        "isPro": { "type": "boolean", "description": "Premium tier active" },
+        "isOnboarded": { "type": "boolean", "description": "Completed onboarding" },
+        "createdAt": { "type": "timestamp", "description": "Account creation timestamp" },
+        "updatedAt": { "type": "timestamp", "description": "Last profile update timestamp" }
+      }
+    },
+    "Holding": {
+      "collection": "holdings",
+      "fields": {
+        "id": { "type": "string", "description": "Holding unique identifier" },
+        "userId": { "type": "string", "description": "Owner user UID" },
+        "ticker": { "type": "string", "description": "Stock or ETF ticker symbol" },
+        "name": { "type": "string", "description": "Asset name" },
+        "assetType": { "type": "string", "description": "ETF, Stock, Bond, Cash" },
+        "shares": { "type": "number", "description": "Number of shares owned" },
+        "avgBuyPrice": { "type": "number", "description": "Average purchase price in GBP" },
+        "currentPrice": { "type": "number", "description": "Current market price in GBP" },
+        "allocationCategory": { "type": "string", "description": "Global Equities, UK Equities, Bonds, etc." },
+        "currency": { "type": "string", "description": "Denominated currency, default GBP" },
+        "updatedAt": { "type": "timestamp", "description": "Last price or balance update" }
+      }
+    },
+    "CommunityPost": {
+      "collection": "community_posts",
+      "fields": {
+        "id": { "type": "string", "description": "Post unique ID" },
+        "userId": { "type": "string", "description": "Author user UID" },
+        "authorName": { "type": "string", "description": "Author display name" },
+        "category": { "type": "string", "description": "Post topic category" },
+        "title": { "type": "string", "description": "Post headline" },
+        "content": { "type": "string", "description": "Post body text" },
+        "likesCount": { "type": "number", "description": "Total upvotes/likes" },
+        "commentsCount": { "type": "number", "description": "Total replies count" },
+        "createdAt": { "type": "timestamp", "description": "Publication timestamp" }
+      }
+    },
+    "CommunityComment": {
+      "collection": "community_comments",
+      "fields": {
+        "id": { "type": "string", "description": "Comment unique ID" },
+        "postId": { "type": "string", "description": "Target discussion post ID" },
+        "userId": { "type": "string", "description": "Author user UID" },
+        "authorName": { "type": "string", "description": "Author display name" },
+        "content": { "type": "string", "description": "Comment reply text" },
+        "createdAt": { "type": "timestamp", "description": "Publication timestamp" }
+      }
+    },
+    "LessonProgress": {
+      "collection": "lesson_progress",
+      "fields": {
+        "id": { "type": "string", "description": "Composite key userId_lessonId" },
+        "userId": { "type": "string", "description": "User UID" },
+        "lessonId": { "type": "string", "description": "Academy lesson module ID" },
+        "completed": { "type": "boolean", "description": "Module completed flag" },
+        "quizScore": { "type": "number", "description": "Score percentage 0-100" },
+        "completedAt": { "type": "timestamp", "description": "Completion timestamp" }
+      }
+    }
+  }
+}

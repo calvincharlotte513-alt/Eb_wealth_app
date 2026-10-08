@@ -1,0 +1,262 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A1000001 /* EBWealthApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000001 /* EBWealthApp.swift */; };
+		A1000002 /* DataModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000002 /* DataModels.swift */; };
+		A1000003 /* FirebaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000003 /* FirebaseService.swift */; };
+		A1000004 /* AuthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000004 /* AuthView.swift */; };
+		A1000005 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000005 /* DashboardView.swift */; };
+		A1000006 /* PortfolioView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000006 /* PortfolioView.swift */; };
+		A1000007 /* AcademyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000007 /* AcademyView.swift */; };
+		A1000008 /* AICoachView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000008 /* AICoachView.swift */; };
+		A1000009 /* CommunityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000009 /* CommunityView.swift */; };
+		A1000010 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1000010 /* ProfileView.swift */; };
+		A1000011 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B1000011 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		C1000001 /* EB_Wealth.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "EB_Wealth.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B1000001 /* EBWealthApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EBWealthApp.swift; sourceTree = "<group>"; };
+		B1000002 /* DataModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models/DataModels.swift; sourceTree = "<group>"; };
+		B1000003 /* FirebaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Services/FirebaseService.swift; sourceTree = "<group>"; };
+		B1000004 /* AuthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/AuthView.swift; sourceTree = "<group>"; };
+		B1000005 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/DashboardView.swift; sourceTree = "<group>"; };
+		B1000006 /* PortfolioView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/PortfolioView.swift; sourceTree = "<group>"; };
+		B1000007 /* AcademyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/AcademyView.swift; sourceTree = "<group>"; };
+		B1000008 /* AICoachView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/AICoachView.swift; sourceTree = "<group>"; };
+		B1000009 /* CommunityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/CommunityView.swift; sourceTree = "<group>"; };
+		B1000010 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views/ProfileView.swift; sourceTree = "<group>"; };
+		B1000011 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B1000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		D1000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		E1000001 = {
+			isa = PBXGroup;
+			children = (
+				E1000002 /* EB_Wealth */,
+				E1000003 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E1000002 /* EB_Wealth */ = {
+			isa = PBXGroup;
+			children = (
+				B1000001 /* EBWealthApp.swift */,
+				B1000002 /* DataModels.swift */,
+				B1000003 /* FirebaseService.swift */,
+				B1000004 /* AuthView.swift */,
+				B1000005 /* DashboardView.swift */,
+				B1000006 /* PortfolioView.swift */,
+				B1000007 /* AcademyView.swift */,
+				B1000008 /* AICoachView.swift */,
+				B1000009 /* CommunityView.swift */,
+				B1000010 /* ProfileView.swift */,
+				B1000011 /* Assets.xcassets */,
+				B1000012 /* Info.plist */,
+			);
+			path = EB_Wealth_iOS;
+			sourceTree = "<group>";
+		};
+		E1000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C1000001 /* EB_Wealth.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F1000001 /* EB_Wealth */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = G1000001 /* Build configuration list for PBXNativeTarget "EB_Wealth" */;
+			buildPhases = (
+				H1000001 /* Sources */,
+				D1000001 /* Frameworks */,
+				I1000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = EB_Wealth;
+			productName = EB_Wealth;
+			productReference = C1000001 /* EB_Wealth.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		J1000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					F1000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = G1000002 /* Build configuration list for PBXProject "EB_Wealth" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = E1000001;
+			productRefGroup = E1000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F1000001 /* EB_Wealth */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		I1000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000011 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		H1000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1000001 /* EBWealthApp.swift in Sources */,
+				A1000002 /* DataModels.swift in Sources */,
+				A1000003 /* FirebaseService.swift in Sources */,
+				A1000004 /* AuthView.swift in Sources */,
+				A1000005 /* DashboardView.swift in Sources */,
+				A1000006 /* PortfolioView.swift in Sources */,
+				A1000007 /* AcademyView.swift in Sources */,
+				A1000008 /* AICoachView.swift in Sources */,
+				A1000009 /* CommunityView.swift in Sources */,
+				A1000010 /* ProfileView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		K1000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = EB_Wealth_iOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ebwealth.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		K1000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = EB_Wealth_iOS/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ebwealth.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		K1000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		K1000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				SDKROOT = iphoneos;
+				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		G1000001 /* Build configuration list for PBXNativeTarget "EB_Wealth" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				K1000001 /* Debug */,
+				K1000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		G1000002 /* Build configuration list for PBXProject "EB_Wealth" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				K1000003 /* Debug */,
+				K1000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = J1000001 /* Project object */;
+}

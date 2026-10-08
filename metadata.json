@@ -1,0 +1,6 @@
+{
+  "name": "EB Wealth",
+  "description": "UK-focused investment education and portfolio analysis platform. Learn, invest, and build long-term wealth with structured academy lessons, ETF overlap checker, compound interest simulator, and AI Wealth Coach.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
