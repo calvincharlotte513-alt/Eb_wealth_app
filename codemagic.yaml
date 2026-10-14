@@ -1,4 +1,4 @@
-
+```yaml
 workflows:
   eb-wealth-ios:
     name: EB Wealth iOS Test
@@ -19,9 +19,8 @@ workflows:
             -destination 'generic/platform=iOS' \
             -derivedDataPath "$CM_BUILD_DIR/build/DerivedData" \
             CODE_SIGNING_ALLOWED=NO \
-ASSETCATALOG_COMPILER_APPICON_NAME="" \
-build
+            ASSETCATALOG_COMPILER_APPICON_NAME="" \
+            build
 
     artifacts:
       - build/DerivedData/Build/Products/Release-iphoneos/*.app
-      - /tmp/xcodebuild_logs/*.log
