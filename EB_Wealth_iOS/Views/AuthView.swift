@@ -221,7 +221,7 @@ public struct AuthView: View {
                     // Write initial profile to Firestore
                     firebaseService.syncProfile(p) { _ in }
                 case .failure(let err):
-                    withAnimation { errorMessage = err }
+                    withAnimation { errorMessage = err.message }
                 }
             }
         } else {
@@ -239,7 +239,7 @@ public struct AuthView: View {
                         profile = p
                     }
                 case .failure(let err):
-                    withAnimation { errorMessage = err }
+                    withAnimation { errorMessage = err.message }
                 }
             }
         }

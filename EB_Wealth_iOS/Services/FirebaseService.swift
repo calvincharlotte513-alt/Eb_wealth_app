@@ -10,6 +10,12 @@ public struct AuthResult {
     public let displayName: String
 }
 
+/// Lightweight Error wrapper so we can use Result<T, AppError> without importing Foundation's LocalizedError.
+public struct AppError: Error {
+    public let message: String
+    public init(_ message: String) { self.message = message }
+}
+
 // MARK: - Firebase Service
 
 /// Handles Firebase Auth (REST) and Firestore (REST) for the EB Wealth iOS app.
@@ -36,7 +42,7 @@ public class FirebaseService: ObservableObject {
         email: String,
         password: String,
         firstName: String,
-        completion: @escaping (Result<AuthResult, String>) -> Void
+        completion: @escaping (Result<AuthResult, AppError>) -> Void
     ) {
         let url = URL(string: "\(AppConfig.authBase):signUp?key=\(AppConfig.firebaseAPIKey)")!
         var req = URLRequest(url: url)
@@ -50,26 +56,27 @@ public class FirebaseService: ObservableObject {
 
         session.dataTask(with: req) { [weak self] data, _, error in
             if let error = error {
-                DispatchQueue.main.async { completion(.failure(error.localizedDescription)) }
+                DispatchQueue.main.async { completion(.failure(AppError(error.localizedDescription))) }
                 return
             }
             guard let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             else {
-                DispatchQueue.main.async { completion(.failure("Invalid server response.")) }
+                DispatchQueue.main.async { completion(.failure(AppError("Invalid server response."))) }
                 return
             }
 
             if let errBlock = json["error"] as? [String: Any],
                let message = errBlock["message"] as? String {
-                DispatchQueue.main.async { completion(.failure(self?.friendlyAuthError(message) ?? message)) }
+                let friendly = self?.friendlyAuthError(message) ?? message
+                DispatchQueue.main.async { completion(.failure(AppError(friendly))) }
                 return
             }
 
             guard let idToken = json["idToken"] as? String,
                   let localId = json["localId"] as? String
             else {
-                DispatchQueue.main.async { completion(.failure("Unexpected auth response.")) }
+                DispatchQueue.main.async { completion(.failure(AppError("Unexpected auth response."))) }
                 return
             }
 
@@ -87,7 +94,7 @@ public class FirebaseService: ObservableObject {
     public func signIn(
         email: String,
         password: String,
-        completion: @escaping (Result<AuthResult, String>) -> Void
+        completion: @escaping (Result<AuthResult, AppError>) -> Void
     ) {
         let url = URL(string: "\(AppConfig.authBase):signInWithPassword?key=\(AppConfig.firebaseAPIKey)")!
         var req = URLRequest(url: url)
@@ -101,26 +108,27 @@ public class FirebaseService: ObservableObject {
 
         session.dataTask(with: req) { [weak self] data, _, error in
             if let error = error {
-                DispatchQueue.main.async { completion(.failure(error.localizedDescription)) }
+                DispatchQueue.main.async { completion(.failure(AppError(error.localizedDescription))) }
                 return
             }
             guard let data = data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             else {
-                DispatchQueue.main.async { completion(.failure("Invalid server response.")) }
+                DispatchQueue.main.async { completion(.failure(AppError("Invalid server response."))) }
                 return
             }
 
             if let errBlock = json["error"] as? [String: Any],
                let message = errBlock["message"] as? String {
-                DispatchQueue.main.async { completion(.failure(self?.friendlyAuthError(message) ?? message)) }
+                let friendly = self?.friendlyAuthError(message) ?? message
+                DispatchQueue.main.async { completion(.failure(AppError(friendly))) }
                 return
             }
 
             guard let idToken = json["idToken"] as? String,
                   let localId = json["localId"] as? String
             else {
-                DispatchQueue.main.async { completion(.failure("Unexpected auth response.")) }
+                DispatchQueue.main.async { completion(.failure(AppError("Unexpected auth response."))) }
                 return
             }
 

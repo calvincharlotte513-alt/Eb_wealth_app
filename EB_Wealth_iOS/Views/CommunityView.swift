@@ -198,7 +198,7 @@ public struct CommunityView: View {
 
     private func publishPost() {
         let name = profile.firstName.isEmpty ? "Investor" : profile.firstName
-        var newPost = CommunityPost(
+        let newPost = CommunityPost(
             authorName: name,
             category: newPostCategory,
             title: newPostTitle,
