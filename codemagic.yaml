@@ -1,14 +1,25 @@
 
 workflows:
   eb-wealth-ios:
-    name: EB Wealth iOS Test
+    name: EB Wealth iOS Build
     max_build_duration: 60
     instance_type: mac_mini_m2
 
     environment:
       xcode: latest
+      vars:
+        FIREBASE_API_KEY: $FIREBASE_API_KEY   # Set in Codemagic Environment Variables
+        GEMINI_API_KEY: $GEMINI_API_KEY       # Set in Codemagic Environment Variables
 
     scripts:
+      - name: Inject API keys into build settings
+        script: |
+          # Create xcconfig that injects env vars as Xcode build settings
+          cat > "$CM_BUILD_DIR/EB_Wealth_iOS/Config.xcconfig" <<EOF
+          FIREBASE_API_KEY = ${FIREBASE_API_KEY:-MISSING_FIREBASE_KEY}
+          GEMINI_API_KEY = ${GEMINI_API_KEY:-MISSING_GEMINI_KEY}
+          EOF
+
       - name: Build iOS project
         script: |
           xcodebuild \
@@ -18,6 +29,7 @@ workflows:
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
             -derivedDataPath "$CM_BUILD_DIR/build/DerivedData" \
+            -xcconfig "$CM_BUILD_DIR/EB_Wealth_iOS/Config.xcconfig" \
             CODE_SIGNING_ALLOWED=NO \
             ASSETCATALOG_COMPILER_APPICON_NAME="" \
             build
