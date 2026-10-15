@@ -8,6 +8,7 @@ import com.example.data.model.*
 import com.example.data.repository.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -122,6 +123,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
+                // Sign in with Firebase Auth so Firestore requests have request.auth
+                try {
+                    com.google.firebase.auth.FirebaseAuth.getInstance()
+                        .signInWithEmailAndPassword(trimmedEmail, trimmedPassword)
+                        .await()
+                } catch (fbAuthEx: Exception) {
+                    try {
+                        com.google.firebase.auth.FirebaseAuth.getInstance()
+                            .createUserWithEmailAndPassword(trimmedEmail, trimmedPassword)
+                            .await()
+                    } catch (fbCreateEx: Exception) {
+                        android.util.Log.w("MainViewModel", "FirebaseAuth sign-in fallback: ${fbCreateEx.message}")
+                    }
+                }
+
                 val account = userRepository.authenticate(trimmedEmail, trimmedPassword)
                 if (account != null) {
                     val current = userProfile.value ?: UserProfile()
@@ -182,6 +198,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             try {
+                // Register in Firebase Auth first for Cloud Firestore authentication
+                try {
+                    com.google.firebase.auth.FirebaseAuth.getInstance()
+                        .createUserWithEmailAndPassword(trimmedEmail, trimmedPassword)
+                        .await()
+                } catch (fbEx: Exception) {
+                    try {
+                        com.google.firebase.auth.FirebaseAuth.getInstance()
+                            .signInWithEmailAndPassword(trimmedEmail, trimmedPassword)
+                            .await()
+                    } catch (ign: Exception) {
+                        android.util.Log.w("MainViewModel", "FirebaseAuth sign-up fallback: ${ign.message}")
+                    }
+                }
+
                 val existing = userRepository.getAccountByEmail(trimmedEmail)
                 if (existing != null) {
                     _authState.value = AuthState.Error("An account with $trimmedEmail already exists. Please sign in instead.")
@@ -256,6 +287,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logout() {
         viewModelScope.launch {
+            try {
+                com.google.firebase.auth.FirebaseAuth.getInstance().signOut()
+            } catch (ign: Exception) {}
             val current = userProfile.value ?: UserProfile()
             userRepository.saveProfile(current.copy(isLoggedIn = false))
             _authState.value = AuthState.Idle

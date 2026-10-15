@@ -3,16 +3,22 @@ import Foundation
 /// Reads API keys injected into Info.plist via build settings / xcconfig.
 /// Keys are set as Codemagic environment variables: FIREBASE_API_KEY, GEMINI_API_KEY
 public enum AppConfig {
-    /// Firebase Web API key — used for Auth REST calls.
-    /// Set the env var FIREBASE_API_KEY in Codemagic (or locally in Config.xcconfig).
+    /// Firebase Web API key — used for Auth REST calls and Firebase initialization.
     public static let firebaseAPIKey: String = {
-        Bundle.main.infoDictionary?["FirebaseAPIKey"] as? String ?? ""
+        let key = Bundle.main.infoDictionary?["FirebaseAPIKey"] as? String ?? ""
+        if key.isEmpty || key.hasPrefix("$(") {
+            return "AIzaSyChpopTlX_GpukhBua2DdAQOHul1UFrSiM"
+        }
+        return key
     }()
 
     /// Gemini API key — used for AI Coach chat.
-    /// Set the env var GEMINI_API_KEY in Codemagic (or locally in Config.xcconfig).
     public static let geminiAPIKey: String = {
-        Bundle.main.infoDictionary?["GeminiAPIKey"] as? String ?? ""
+        let key = Bundle.main.infoDictionary?["GeminiAPIKey"] as? String ?? ""
+        if key.hasPrefix("$(") {
+            return ""
+        }
+        return key
     }()
 
     /// Firebase project ID

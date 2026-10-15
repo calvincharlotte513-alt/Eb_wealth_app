@@ -16,3 +16,6 @@
 local.properties
 .env
 debug.keystore
+-e 
+*.apk
+.build-outputs/

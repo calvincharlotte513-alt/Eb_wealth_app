@@ -50,19 +50,25 @@ class FirebaseSyncManager(
             val dbId = context.getString(R.string.firestore_database_id)
             val firestore = FirebaseFirestore.getInstance(FirebaseApp.getInstance(), dbId)
             val userProfile = database.userDao().getUserProfileOnce() ?: UserProfile()
-            val userId = "user_${userProfile.email.replace(".", "_").replace("@", "_")}"
+            val currentAuthUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+            val userId = currentAuthUser?.uid ?: "user_${userProfile.email.replace(".", "_").replace("@", "_")}"
 
             // 1. Sync User Profile
             val userMap = hashMapOf(
+                "id" to userId,
                 "firstName" to userProfile.firstName,
                 "email" to userProfile.email,
+                "ageRange" to userProfile.ageRange,
+                "country" to userProfile.country,
                 "experienceLevel" to userProfile.experienceLevel,
                 "primaryGoal" to userProfile.primaryGoal,
                 "timeHorizon" to userProfile.timeHorizon,
                 "monthlyCapacity" to userProfile.monthlyCapacity,
                 "riskProfile" to userProfile.riskProfile,
                 "xp" to userProfile.xp,
+                "streakDays" to userProfile.streakDays,
                 "isPro" to userProfile.isPro,
+                "isOnboarded" to userProfile.isOnboarded,
                 "lastSyncedAt" to System.currentTimeMillis()
             )
             firestore.collection("users").document(userId)
@@ -73,6 +79,8 @@ class FirebaseSyncManager(
             val holdings = database.portfolioDao().getAllHoldings().firstOrNull() ?: emptyList()
             for (h in holdings) {
                 val holdingMap = hashMapOf(
+                    "id" to "${userId}_${h.ticker}",
+                    "userId" to userId,
                     "ticker" to h.ticker,
                     "name" to h.name,
                     "assetType" to h.assetType,
@@ -83,8 +91,13 @@ class FirebaseSyncManager(
                     "geography" to h.geography,
                     "sector" to h.sector
                 )
+                // Write to both subcollection and root collection for multi-platform query support
                 firestore.collection("users").document(userId)
                     .collection("holdings").document(h.ticker)
+                    .set(holdingMap, SetOptions.merge())
+                    .await()
+
+                firestore.collection("holdings").document("${userId}_${h.ticker}")
                     .set(holdingMap, SetOptions.merge())
                     .await()
             }
@@ -93,6 +106,8 @@ class FirebaseSyncManager(
             val posts = database.communityDao().getAllPosts().firstOrNull() ?: emptyList()
             for (p in posts) {
                 val postMap = hashMapOf(
+                    "id" to "post_${p.id}",
+                    "userId" to userId,
                     "authorName" to p.authorName,
                     "authorLevel" to p.authorLevel,
                     "category" to p.category,

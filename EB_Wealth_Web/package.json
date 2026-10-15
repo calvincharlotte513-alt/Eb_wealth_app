@@ -1,0 +1,12 @@
+{
+  "name": "eb-wealth-web",
+  "version": "1.0.0",
+  "description": "EB Wealth - Institutional-Grade UK Investment Web Platform",
+  "scripts": {
+    "start": "npx serve . -l 3000",
+    "dev": "npx serve . -l 3000"
+  },
+  "keywords": ["investment", "uk", "isa", "etf", "wealth", "firebase"],
+  "author": "EB Wealth",
+  "license": "UNLICENSED"
+}

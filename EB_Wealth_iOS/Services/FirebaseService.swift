@@ -156,13 +156,14 @@ public class FirebaseService: ObservableObject {
 
     public func syncProfile(_ profile: UserProfile, completion: @escaping (Bool) -> Void) {
         guard let user = currentUser else { completion(false); return }
-        let url = URL(string: "\(AppConfig.firestoreBase)/users/\(user.localId)?updateMask.fieldPaths=firstName&updateMask.fieldPaths=email&updateMask.fieldPaths=experienceLevel&updateMask.fieldPaths=primaryGoal&updateMask.fieldPaths=xp&updateMask.fieldPaths=isPro&updateMask.fieldPaths=streakDays")!
+        let url = URL(string: "\(AppConfig.firestoreBase)/users/\(user.localId)?updateMask.fieldPaths=id&updateMask.fieldPaths=firstName&updateMask.fieldPaths=email&updateMask.fieldPaths=experienceLevel&updateMask.fieldPaths=primaryGoal&updateMask.fieldPaths=xp&updateMask.fieldPaths=isPro&updateMask.fieldPaths=streakDays&updateMask.fieldPaths=isOnboarded")!
         var req = URLRequest(url: url)
         req.httpMethod = "PATCH"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.setValue("Bearer \(user.idToken)", forHTTPHeaderField: "Authorization")
         req.httpBody = try? JSONSerialization.data(withJSONObject: [
             "fields": [
+                "id":              ["stringValue": user.localId],
                 "firstName":       ["stringValue": profile.firstName],
                 "email":           ["stringValue": profile.email],
                 "experienceLevel": ["stringValue": profile.experienceLevel],
@@ -259,6 +260,7 @@ public class FirebaseService: ObservableObject {
         req.setValue("Bearer \(user.idToken)", forHTTPHeaderField: "Authorization")
         req.httpBody = try? JSONSerialization.data(withJSONObject: [
             "fields": [
+                "userId":             ["stringValue": user.localId],
                 "ticker":              ["stringValue": holding.ticker],
                 "name":               ["stringValue": holding.name],
                 "assetType":          ["stringValue": holding.assetType],
