@@ -2,10 +2,12 @@ import SwiftUI
 
 public struct ResearchView: View {
     public var onBack: () -> Void
+    public var onSelectAsset: (String) -> Void
     @State private var searchQuery: String = ""
 
-    public init(onBack: @escaping () -> Void = {}) {
+    public init(onBack: @escaping () -> Void = {}, onSelectAsset: @escaping (String) -> Void = { _ in }) {
         self.onBack = onBack
+        self.onSelectAsset = onSelectAsset
     }
 
     private let analyzedAssets = [

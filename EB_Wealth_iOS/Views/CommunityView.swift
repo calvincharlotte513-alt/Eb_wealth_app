@@ -26,8 +26,11 @@ public struct CommunityView: View {
         "Portfolio Review", "Dividends & Income", "Questions & Help"
     ]
 
-    public init(profile: Binding<UserProfile>) {
+    public var onBack: () -> Void
+
+    public init(profile: Binding<UserProfile>, onBack: @escaping () -> Void = {}) {
         self._profile = profile
+        self.onBack = onBack
     }
 
     private var filteredPosts: [CommunityPost] {
@@ -36,6 +39,33 @@ public struct CommunityView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
+            // Header Row with Back Button
+            HStack(spacing: 12) {
+                Button(action: onBack) {
+                    Image(systemName: "arrow.left")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(Color(hex: "00F0FF"))
+                        .frame(width: 32, height: 32)
+                        .background(Color(hex: "00F0FF").opacity(0.1))
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color(hex: "00F0FF").opacity(0.3), lineWidth: 1))
+                }
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Community Forum").font(.system(size: 15, weight: .black)).foregroundColor(.white)
+                    Text("Verified UK Investor Discussions").font(.system(size: 10)).foregroundColor(Color(hex: "94A3B8"))
+                }
+                Spacer()
+                Button(action: { showCreateModal = true }) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(Color(hex: "00F0FF"))
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(Color(hex: "040B14").opacity(0.95))
+
             // Category Filter Bar
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {

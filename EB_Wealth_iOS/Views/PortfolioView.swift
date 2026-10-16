@@ -1,11 +1,14 @@
 import SwiftUI
 
 public struct PortfolioView: View {
+    public var onNavigateToOverlap: () -> Void
     @EnvironmentObject private var firebaseService: FirebaseService
     @State private var holdings: [Holding] = []
     @State private var showAddModal: Bool = false
 
-    public init() {}
+    public init(onNavigateToOverlap: @escaping () -> Void = {}) {
+        self.onNavigateToOverlap = onNavigateToOverlap
+    }
 
     private var totalVal: Double {
         holdings.reduce(0) { $0 + $1.currentValue }
@@ -88,9 +91,11 @@ public struct PortfolioView: View {
                             .font(.system(size: 13, weight: .heavy))
                             .foregroundColor(.white)
                         Spacer()
-                        Text("Rebalance Tool →")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color(hex: "00F0FF"))
+                        Button(action: onNavigateToOverlap) {
+                            Text("Rebalance Tool →")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(Color(hex: "00F0FF"))
+                        }
                     }
 
                     Text("By UK Tax Vehicle:")

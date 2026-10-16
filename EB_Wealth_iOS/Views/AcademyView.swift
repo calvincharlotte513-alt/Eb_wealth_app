@@ -2,11 +2,13 @@ import SwiftUI
 
 public struct AcademyView: View {
     @Binding public var profile: UserProfile
+    public var onSelectLesson: (Int) -> Void
     @EnvironmentObject private var firebaseService: FirebaseService
     @State private var selectedLevel: Int = 1
 
-    public init(profile: Binding<UserProfile>) {
+    public init(profile: Binding<UserProfile>, onSelectLesson: @escaping (Int) -> Void = { _ in }) {
         self._profile = profile
+        self.onSelectLesson = onSelectLesson
     }
 
     private let lessons = [
@@ -68,48 +70,51 @@ public struct AcademyView: View {
                 // Lesson items list matching Screenshot 5
                 VStack(spacing: 10) {
                     ForEach(lessons, id: \.id) { lesson in
-                        HStack(spacing: 14) {
-                            ZStack {
-                                Circle()
-                                    .stroke(lesson.completed ? Color(hex: "10B981") : Color(hex: "00F0FF"), lineWidth: 1.5)
-                                    .background(Circle().fill(lesson.completed ? Color(hex: "10B981").opacity(0.15) : Color.clear))
-                                    .frame(width: 38, height: 38)
+                        Button(action: { onSelectLesson(lesson.id) }) {
+                            HStack(spacing: 14) {
+                                ZStack {
+                                    Circle()
+                                        .stroke(lesson.completed ? Color(hex: "10B981") : Color(hex: "00F0FF"), lineWidth: 1.5)
+                                        .background(Circle().fill(lesson.completed ? Color(hex: "10B981").opacity(0.15) : Color.clear))
+                                        .frame(width: 38, height: 38)
 
-                                if lesson.completed {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(Color(hex: "10B981"))
-                                } else {
-                                    Text("\(lesson.id)")
+                                    if lesson.completed {
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 14, weight: .bold))
+                                            .foregroundColor(Color(hex: "10B981"))
+                                    } else {
+                                        Text("\(lesson.id)")
+                                            .font(.system(size: 14, weight: .black))
+                                            .foregroundColor(Color(hex: "00F0FF"))
+                                    }
+                                }
+
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(lesson.title)
                                         .font(.system(size: 14, weight: .black))
-                                        .foregroundColor(Color(hex: "00F0FF"))
+                                        .foregroundColor(.white)
+                                    HStack(spacing: 8) {
+                                        Text("⏱ \(lesson.time)")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(Color(hex: "94A3B8"))
+                                        Text("+\(lesson.xp) XP")
+                                            .font(.system(size: 11, weight: .bold))
+                                            .foregroundColor(Color(hex: "FBBF24"))
+                                    }
                                 }
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(Color(hex: "64748B"))
                             }
-
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(lesson.title)
-                                    .font(.system(size: 14, weight: .black))
-                                    .foregroundColor(.white)
-                                HStack(spacing: 8) {
-                                    Text("⏱ \(lesson.time)")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(Color(hex: "94A3B8"))
-                                    Text("+\(lesson.xp) XP")
-                                        .font(.system(size: 11, weight: .bold))
-                                        .foregroundColor(Color(hex: "FBBF24"))
-                                }
-                            }
-
-                            Spacer()
-
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(Color(hex: "64748B"))
+                            .padding(14)
+                            .background(Color(hex: "071322").opacity(0.8))
+                            .cornerRadius(14)
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "00F0FF").opacity(0.22), lineWidth: 1))
                         }
-                        .padding(14)
-                        .background(Color(hex: "071322").opacity(0.8))
-                        .cornerRadius(14)
-                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "00F0FF").opacity(0.22), lineWidth: 1))
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
             }

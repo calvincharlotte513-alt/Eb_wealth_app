@@ -2,11 +2,13 @@ import SwiftUI
 
 public struct ProfileView: View {
     @Binding public var profile: UserProfile
+    public var onNavigate: (AppScreen) -> Void
     @EnvironmentObject private var firebaseService: FirebaseService
     @State private var showUpgradeSheet: Bool = false
 
-    public init(profile: Binding<UserProfile>) {
+    public init(profile: Binding<UserProfile>, onNavigate: @escaping (AppScreen) -> Void = { _ in }) {
         self._profile = profile
+        self.onNavigate = onNavigate
     }
 
     public var body: some View {
@@ -178,20 +180,31 @@ public struct ProfileView: View {
                 .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(hex: "00F0FF").opacity(0.25), lineWidth: 1))
 
                 // Card 3: Investor Suitability Mandate (Screenshot 1)
-                HStack {
-                    Text("INVESTOR SUITABILITY MANDATE")
-                        .font(.system(size: 12, weight: .black))
-                        .foregroundColor(Color(hex: "00F0FF"))
-                        .tracking(0.5)
-                    Spacer()
-                    Text("Recalibrate →")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(Color(hex: "00F0FF"))
+                Button(action: { onNavigate(.onboarding) }) {
+                    HStack {
+                        Text("INVESTOR SUITABILITY MANDATE")
+                            .font(.system(size: 12, weight: .black))
+                            .foregroundColor(Color(hex: "00F0FF"))
+                            .tracking(0.5)
+                        Spacer()
+                        Text("Recalibrate →")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(Color(hex: "00F0FF"))
+                    }
+                    .padding(18)
+                    .background(Color(hex: "071322").opacity(0.85))
+                    .cornerRadius(18)
+                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(hex: "00F0FF").opacity(0.25), lineWidth: 1))
                 }
-                .padding(18)
-                .background(Color(hex: "071322").opacity(0.85))
-                .cornerRadius(18)
-                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(hex: "00F0FF").opacity(0.25), lineWidth: 1))
+                .buttonStyle(PlainButtonStyle())
+
+                // Quick Tools Grid
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
+                    toolButton(title: "📈 Growth Simulator", subtitle: "Forecast Compounding") { onNavigate(.simulator) }
+                    toolButton(title: "🔍 ETF Overlap Tool", subtitle: "Analyze Fund Overlap") { onNavigate(.etfOverlap) }
+                    toolButton(title: "📅 Upcoming Events", subtitle: "Live Masterclasses") { onNavigate(.events) }
+                    toolButton(title: "📰 LSE Market News", subtitle: "Financial Bulletins") { onNavigate(.news) }
+                }
             }
             .padding(.horizontal, 16)
             .padding(.top, 8)
@@ -200,5 +213,24 @@ public struct ProfileView: View {
         .sheet(isPresented: $showUpgradeSheet) {
             UpgradeProSheet(isPro: $profile.isPro)
         }
+    }
+
+    private func toolButton(title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(.white)
+                Text(subtitle)
+                    .font(.system(size: 10))
+                    .foregroundColor(Color(hex: "94A3B8"))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(Color(hex: "071322").opacity(0.85))
+            .cornerRadius(12)
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(hex: "00F0FF").opacity(0.2), lineWidth: 1))
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }

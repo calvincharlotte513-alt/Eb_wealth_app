@@ -1,6 +1,7 @@
 import SwiftUI
 
 public struct AICoachView: View {
+    public var onBack: () -> Void
     @EnvironmentObject private var firebaseService: FirebaseService
 
     @State private var inputPrompt: String = ""
@@ -16,12 +17,24 @@ public struct AICoachView: View {
         messages.dropFirst().map { msg in (role: msg.isUser ? "user" : "model", text: msg.text) }
     }
 
-    public init() {}
+    public init(onBack: @escaping () -> Void = {}) {
+        self.onBack = onBack
+    }
 
     public var body: some View {
         VStack(spacing: 0) {
             // Header
             HStack(spacing: 10) {
+                Button(action: onBack) {
+                    Image(systemName: "arrow.left")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(Color(hex: "00F0FF"))
+                        .frame(width: 32, height: 32)
+                        .background(Color(hex: "00F0FF").opacity(0.1))
+                        .clipShape(Circle())
+                        .overlay(Circle().stroke(Color(hex: "00F0FF").opacity(0.3), lineWidth: 1))
+                }
+
                 ZStack {
                     Circle().fill(Color(hex: "00F0FF").opacity(0.15)).frame(width: 36, height: 36)
                     Image(systemName: "cpu.fill").font(.system(size: 16)).foregroundColor(Color(hex: "00F0FF"))
