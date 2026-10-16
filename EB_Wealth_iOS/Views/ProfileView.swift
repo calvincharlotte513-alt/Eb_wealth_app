@@ -3,9 +3,7 @@ import SwiftUI
 public struct ProfileView: View {
     @Binding public var profile: UserProfile
     @EnvironmentObject private var firebaseService: FirebaseService
-    @State private var isSyncing: Bool = false
-    @State private var syncMessage: String? = nil
-    @State private var showSignOutConfirm: Bool = false
+    @State private var showUpgradeSheet: Bool = false
 
     public init(profile: Binding<UserProfile>) {
         self._profile = profile
@@ -14,208 +12,193 @@ public struct ProfileView: View {
     public var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-
-                // Client Identity Card
-                HStack(spacing: 14) {
-                    ZStack {
-                        Circle()
-                            .fill(LinearGradient(
-                                colors: [Color(hex: "00F0FF").opacity(0.25), Color(hex: "0284C7").opacity(0.15)],
-                                startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .frame(width: 60, height: 60)
-                        Text(String(profile.firstName.prefix(1)).uppercased())
-                            .font(.system(size: 24, weight: .black))
-                            .foregroundColor(Color(hex: "00F0FF"))
-                    }
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(profile.firstName.isEmpty ? "Investor" : profile.firstName)
-                            .font(.system(size: 20, weight: .bold))
-                            .foregroundColor(.white)
-                        Text(profile.email)
-                            .font(.system(size: 12))
-                            .foregroundColor(Color(hex: "94A3B8"))
+                // Card 1: Verified Wealth Client Card (Screenshot 1)
+                VStack(spacing: 14) {
+                    HStack {
                         HStack(spacing: 6) {
-                            Text("🇬🇧 United Kingdom")
-                                .font(.system(size: 11))
-                                .foregroundColor(Color(hex: "38BDF8"))
-                            if profile.isPro {
-                                Text("PRO")
-                                    .font(.system(size: 9, weight: .black))
-                                    .foregroundColor(Color(hex: "040B14"))
-                                    .padding(.horizontal, 6).padding(.vertical, 2)
-                                    .background(Color(hex: "FBBF24"))
-                                    .cornerRadius(4)
-                            }
+                            Image(systemName: "checkmark.shield.fill")
+                                .foregroundColor(Color(hex: "10B981"))
+                                .font(.system(size: 13))
+                            Text("VERIFIED WEALTH CLIENT")
+                                .font(.system(size: 11, weight: .black))
+                                .foregroundColor(Color(hex: "34D399"))
+                                .tracking(0.4)
                         }
-                    }
-                    Spacer()
-                    // XP Badge
-                    VStack(spacing: 2) {
-                        Text("\(profile.xp)")
-                            .font(.system(size: 20, weight: .black))
-                            .foregroundColor(Color(hex: "FBBF24"))
-                        Text("XP")
-                            .font(.system(size: 9, weight: .bold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Color(hex: "10B981").opacity(0.15))
+                        .cornerRadius(8)
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color(hex: "10B981").opacity(0.5), lineWidth: 1))
+
+                        Spacer()
+
+                        Text("REF: EB-8849-GB")
+                            .font(.system(size: 11, weight: .bold))
                             .foregroundColor(Color(hex: "94A3B8"))
+                    }
+
+                    // Avatar & User Info
+                    HStack(spacing: 14) {
+                        ZStack {
+                            Circle()
+                                .fill(LinearGradient(
+                                    colors: [Color(hex: "00BCD4"), Color(hex: "0284C7")],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                ))
+                                .frame(width: 64, height: 64)
+                                .overlay(Circle().stroke(Color(hex: "00F0FF"), lineWidth: 2))
+                                .shadow(color: Color(hex: "00F0FF").opacity(0.4), radius: 10, x: 0, y: 0)
+
+                            Text(String(profile.firstName.prefix(1)).uppercased())
+                                .font(.system(size: 26, weight: .black))
+                                .foregroundColor(.white)
+                        }
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(profile.firstName.isEmpty ? "Johnkennedy" : profile.firstName)
+                                .font(.system(size: 22, weight: .black))
+                                .foregroundColor(.white)
+                            Text(profile.email.isEmpty ? "johnkennedy3313@gmail.com" : profile.email)
+                                .font(.system(size: 12))
+                                .foregroundColor(Color(hex: "94A3B8"))
+                            Text("United Kingdom • GBP Base")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(Color(hex: "00F0FF"))
+                                .padding(.top, 2)
+                        }
+                        Spacer()
+                    }
+
+                    Divider().background(Color.white.opacity(0.08))
+
+                    // Tier Status Row
+                    HStack(alignment: .center) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("TIER STATUS")
+                                .font(.system(size: 10, weight: .black))
+                                .foregroundColor(Color(hex: "94A3B8"))
+                                .tracking(0.5)
+                            Text(profile.isPro ? "Pro Wealth Member" : "Standard Investor")
+                                .font(.system(size: 15, weight: .black))
+                                .foregroundColor(.white)
+                        }
+
+                        Spacer()
+
+                        Button(action: { showUpgradeSheet = true }) {
+                            Text("Upgrade to Pro")
+                                .font(.system(size: 12, weight: .black))
+                                .foregroundColor(Color(hex: "040B14"))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color(hex: "FBBF24"))
+                                .cornerRadius(12)
+                                .shadow(color: Color(hex: "FBBF24").opacity(0.35), radius: 6, x: 0, y: 2)
+                        }
                     }
                 }
                 .padding(18)
-                .background(Color(hex: "0A1628").opacity(0.85))
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(hex: "00F0FF").opacity(0.25), lineWidth: 1))
-                .cornerRadius(16)
+                .background(Color(hex: "071322").opacity(0.85))
+                .cornerRadius(18)
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(hex: "00F0FF").opacity(0.4), lineWidth: 1))
 
-                // Profile Details
-                VStack(spacing: 0) {
-                    profileRow(icon: "target", label: "Primary Goal", value: profile.primaryGoal)
-                    Divider().background(Color(hex: "1E293B"))
-                    profileRow(icon: "chart.bar.fill", label: "Experience Level", value: profile.experienceLevel)
-                    Divider().background(Color(hex: "1E293B"))
-                    profileRow(icon: "clock.fill", label: "Time Horizon", value: profile.timeHorizon)
-                    Divider().background(Color(hex: "1E293B"))
-                    profileRow(icon: "shield.lefthalf.filled", label: "Risk Profile", value: profile.riskProfile)
-                    Divider().background(Color(hex: "1E293B"))
-                    profileRow(icon: "flame.fill", label: "Day Streak", value: "\(profile.streakDays) days")
-                }
-                .background(Color(hex: "0A1628").opacity(0.75))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "1E293B"), lineWidth: 1))
-                .cornerRadius(14)
-
-                // Firebase Cloud Vault Card
-                VStack(alignment: .leading, spacing: 12) {
+                // Card 2: Tax Year 2024/2025 Allowances (Screenshot 1)
+                VStack(spacing: 12) {
                     HStack {
-                        Label("FIREBASE CLOUD VAULT", systemImage: "icloud.fill")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color(hex: "00F0FF"))
+                        Text("TAX YEAR 2024/2025 ALLOWANCES")
+                            .font(.system(size: 11, weight: .black))
+                            .foregroundColor(Color(hex: "FBBF24"))
+                            .tracking(0.8)
                         Spacer()
-                        // Sync indicator
-                        Circle()
-                            .fill(firebaseService.isConnected ? Color(hex: "34D399") : Color(hex: "F43F5E"))
-                            .frame(width: 8, height: 8)
-                        Text(firebaseService.isConnected ? "Connected" : "Offline")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundColor(firebaseService.isConnected ? Color(hex: "34D399") : Color(hex: "F43F5E"))
+                        Text("HMRC Regulated")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color(hex: "94A3B8"))
                     }
 
-                    Text("Project: \(AppConfig.projectId)")
-                        .font(.system(size: 10))
-                        .foregroundColor(Color(hex: "475569"))
+                    HStack {
+                        Text("Stocks & Shares ISA Limit")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Text("£8,450 / £20,000")
+                            .font(.system(size: 13, weight: .black))
+                            .foregroundColor(Color(hex: "00F0FF"))
+                    }
+
+                    // Dual-tone progress bar with cyan end dot
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color.white.opacity(0.1))
+                                .frame(height: 6)
+
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(Color(hex: "00F0FF"))
+                                .frame(width: geo.size.width * 0.4225, height: 6)
+
+                            Circle()
+                                .fill(Color(hex: "00F0FF"))
+                                .frame(width: 12, height: 12)
+                                .shadow(color: Color(hex: "00F0FF"), radius: 4)
+                                .offset(x: geo.size.width * 0.4225 - 6)
+                        }
+                    }
+                    .frame(height: 12)
+
+                    Text("£11,550 tax-free allowance remaining until April 5")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "94A3B8"))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Divider().background(Color.white.opacity(0.08)).padding(.vertical, 4)
 
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Last Synced")
-                                .font(.system(size: 10))
-                                .foregroundColor(Color(hex: "64748B"))
-                            Text(firebaseService.lastSyncTimestamp)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(Color(hex: "34D399"))
+                            Text("Capital Gains Allowance")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "94A3B8"))
+                            Text("£3,000.00 Limit")
+                                .font(.system(size: 14, weight: .black))
+                                .foregroundColor(.white)
                         }
                         Spacer()
-                        Button(action: syncNow) {
-                            if isSyncing {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: Color(hex: "040B14")))
-                                    .frame(width: 80, height: 32)
-                                    .background(Color(hex: "00F0FF"))
-                                    .cornerRadius(8)
-                            } else {
-                                Text("Sync Now")
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundColor(Color(hex: "040B14"))
-                                    .padding(.horizontal, 14).padding(.vertical, 7)
-                                    .background(Color(hex: "00F0FF"))
-                                    .cornerRadius(8)
-                            }
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text("Dividend Allowance")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "94A3B8"))
+                            Text("£500.00 Tax-Free")
+                                .font(.system(size: 14, weight: .black))
+                                .foregroundColor(.white)
                         }
-                        .disabled(isSyncing)
                     }
+                }
+                .padding(18)
+                .background(Color(hex: "071322").opacity(0.85))
+                .cornerRadius(18)
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(hex: "00F0FF").opacity(0.25), lineWidth: 1))
 
-                    if let msg = syncMessage {
-                        Text(msg)
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "34D399"))
-                            .transition(.opacity)
-                    }
+                // Card 3: Investor Suitability Mandate (Screenshot 1)
+                HStack {
+                    Text("INVESTOR SUITABILITY MANDATE")
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundColor(Color(hex: "00F0FF"))
+                        .tracking(0.5)
+                    Spacer()
+                    Text("Recalibrate →")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(Color(hex: "00F0FF"))
                 }
-                .padding(16)
-                .background(Color(hex: "0A1628").opacity(0.8))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "00F0FF").opacity(0.2), lineWidth: 1))
-                .cornerRadius(14)
-
-                // Sign Out Button
-                Button(action: { showSignOutConfirm = true }) {
-                    HStack {
-                        Image(systemName: "rectangle.portrait.and.arrow.right")
-                        Text("Sign Out & Lock Vault")
-                    }
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(Color(hex: "F43F5E"))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(Color(hex: "E11D48").opacity(0.12))
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(hex: "E11D48").opacity(0.3), lineWidth: 1))
-                    .cornerRadius(12)
-                }
-                .alert("Sign Out", isPresented: $showSignOutConfirm) {
-                    Button("Cancel", role: .cancel) {}
-                    Button("Sign Out", role: .destructive) { signOut() }
-                } message: {
-                    Text("Are you sure you want to sign out of your EB Wealth vault?")
-                }
+                .padding(18)
+                .background(Color(hex: "071322").opacity(0.85))
+                .cornerRadius(18)
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(hex: "00F0FF").opacity(0.25), lineWidth: 1))
             }
-            .padding(16)
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
-    }
-
-    // MARK: - Sub-views
-
-    private func profileRow(icon: String, label: String, value: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 14))
-                .foregroundColor(Color(hex: "00F0FF"))
-                .frame(width: 20)
-            Text(label)
-                .font(.system(size: 13))
-                .foregroundColor(Color(hex: "94A3B8"))
-            Spacer()
-            Text(value)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.white)
-                .lineLimit(1)
+        .sheet(isPresented: $showUpgradeSheet) {
+            UpgradeProSheet(isPro: $profile.isPro)
         }
-        .padding(.horizontal, 16).padding(.vertical, 12)
-    }
-
-    // MARK: - Actions
-
-    private func syncNow() {
-        isSyncing = true
-        syncMessage = nil
-
-        // First push local profile, then pull fresh data
-        firebaseService.syncProfile(profile) { ok in
-            if ok {
-                firebaseService.fetchProfile { fetched in
-                    isSyncing = false
-                    if let fetched = fetched {
-                        profile.xp = fetched.xp
-                        profile.streakDays = fetched.streakDays
-                        profile.isPro = fetched.isPro
-                    }
-                    withAnimation { syncMessage = "✓ Synced successfully at \(firebaseService.lastSyncTimestamp)" }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
-                        withAnimation { syncMessage = nil }
-                    }
-                }
-            } else {
-                isSyncing = false
-                withAnimation { syncMessage = "⚠ Sync failed. Check your connection." }
-            }
-        }
-    }
-
-    private func signOut() {
-        firebaseService.signOut()
-        profile = UserProfile()  // Reset to empty profile → triggers AuthView
     }
 }

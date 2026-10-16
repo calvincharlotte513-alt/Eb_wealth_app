@@ -2,217 +2,207 @@ import SwiftUI
 
 public struct DashboardView: View {
     @Binding public var profile: UserProfile
+    public var onSelectTab: (MainTab) -> Void
+    public var onOpenCommunity: () -> Void
     @EnvironmentObject private var firebaseService: FirebaseService
-    @State private var holdings: [Holding] = []
-    @State private var isLoading: Bool = true
 
-    public init(profile: Binding<UserProfile>) {
+    public init(
+        profile: Binding<UserProfile>,
+        onSelectTab: @escaping (MainTab) -> Void = { _ in },
+        onOpenCommunity: @escaping () -> Void = {}
+    ) {
         self._profile = profile
+        self.onSelectTab = onSelectTab
+        self.onOpenCommunity = onOpenCommunity
     }
 
-    public var totalValuation: Double { holdings.reduce(0) { $0 + $1.currentValue } }
-    public var totalCost: Double { holdings.reduce(0) { $0 + $1.totalCost } }
-    public var totalProfit: Double { totalValuation - totalCost }
-    public var returnPct: Double { guard totalCost > 0 else { return 0 }; return (totalProfit / totalCost) * 100 }
-
-    // Allocation breakdown by category
-    private var allocations: [(label: String, value: Double, color: String)] {
-        var buckets: [String: Double] = [:]
-        for h in holdings { buckets[h.allocationCategory, default: 0] += h.currentValue }
-        let sorted = buckets.sorted { $0.value > $1.value }
-        let colors = ["00F0FF", "FBBF24", "34D399", "A78BFA", "F472B6"]
-        return sorted.enumerated().map { idx, pair in
-            (label: pair.key, value: pair.value, color: colors[idx % colors.count])
-        }
-    }
+    private let sampleAssets = [
+        (ticker: "VWRP", name: "Vanguard FTSE All-World", type: "ETF", change: "+0.42%", price: "£112.40"),
+        (ticker: "VUAG", name: "Vanguard S&P 500", type: "ETF", change: "+0.38%", price: "£85.25"),
+        (ticker: "AZN", name: "AstraZeneca PLC", type: "Stock", change: "+1.12%", price: "£104.50"),
+        (ticker: "EQGB", name: "Invesco EQQQ Nasdaq", type: "ETF", change: "+0.65%", price: "£34.10"),
+        (ticker: "ISF", name: "iShares Core FTSE 100", type: "ETF", change: "+0.15%", price: "£8.22")
+    ]
 
     public var body: some View {
         ScrollView {
-            VStack(spacing: 18) {
+            VStack(spacing: 16) {
+                // EB Wealth Big Center Title (Screenshot 2)
+                VStack(spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text("EB")
+                            .font(.system(size: 32, weight: .black))
+                            .foregroundColor(Color(hex: "00F0FF"))
+                        Text("Wealth")
+                            .font(.system(size: 32, weight: .black))
+                            .foregroundColor(Color(hex: "FBBF24"))
+                    }
+                    Text("Investment Education Platform")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(Color(hex: "CBD5E1"))
+                }
+                .padding(.top, 8)
 
-                // Portfolio Valuation Banner
-                VStack(alignment: .leading, spacing: 8) {
+                // Glowing Cosmic Search Bar
+                Button(action: { onSelectTab(.market) }) {
                     HStack {
-                        Text("TOTAL WEALTH VALUATION")
-                            .font(.system(size: 11, weight: .bold))
+                        Text("Search UK stocks, ETFs, lessons...")
+                            .font(.system(size: 13))
                             .foregroundColor(Color(hex: "94A3B8"))
                         Spacer()
-                        Text("UK TAX SHIELD ACTIVE")
-                            .font(.system(size: 10, weight: .bold))
-                            .padding(.horizontal, 8).padding(.vertical, 3)
-                            .background(Color(hex: "34D399").opacity(0.15))
-                            .foregroundColor(Color(hex: "34D399"))
-                            .cornerRadius(6)
-                    }
-
-                    if isLoading {
-                        HStack(spacing: 10) {
-                            ProgressView().progressViewStyle(CircularProgressViewStyle(tint: Color(hex: "00F0FF")))
-                            Text("Loading portfolio…")
-                                .font(.system(size: 14))
-                                .foregroundColor(Color(hex: "94A3B8"))
-                        }
-                        .padding(.vertical, 8)
-                    } else {
-                        Text("£\(String(format: "%.2f", totalValuation))")
-                            .font(.system(size: 34, weight: .heavy))
-                            .foregroundColor(.white)
-
-                        HStack(spacing: 6) {
-                            Image(systemName: totalProfit >= 0 ? "arrow.up.right" : "arrow.down.right")
-                                .foregroundColor(totalProfit >= 0 ? Color(hex: "34D399") : Color(hex: "F43F5E"))
-                            Text("\(totalProfit >= 0 ? "+" : "")£\(String(format: "%.2f", totalProfit)) (\(String(format: "%.1f", returnPct))%)")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundColor(totalProfit >= 0 ? Color(hex: "34D399") : Color(hex: "F43F5E"))
-                            Text("Unrealised Return")
-                                .font(.system(size: 12))
-                                .foregroundColor(Color(hex: "94A3B8"))
+                        ZStack {
+                            Circle()
+                                .fill(Color(hex: "00F0FF").opacity(0.2))
+                                .frame(width: 32, height: 32)
+                            Image(systemName: "magnifyingglass")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(Color(hex: "00F0FF"))
                         }
                     }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color(hex: "00F0FF").opacity(0.08))
+                    .cornerRadius(28)
+                    .overlay(RoundedRectangle(cornerRadius: 28).stroke(Color(hex: "00F0FF").opacity(0.5), lineWidth: 1))
+                    .shadow(color: Color(hex: "00F0FF").opacity(0.15), radius: 8, x: 0, y: 0)
                 }
-                .padding(20)
-                .background(Color(hex: "0A1628").opacity(0.85))
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(hex: "00F0FF").opacity(0.3), lineWidth: 1))
-                .cornerRadius(16)
+                .buttonStyle(PlainButtonStyle())
 
-                // Allocation Pillars
-                if !isLoading && !allocations.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            ForEach(allocations, id: \.label) { alloc in
-                                AllocationCard(
-                                    title: alloc.label,
-                                    value: "£\(String(format: "%.0f", alloc.value))",
-                                    pct: totalValuation > 0 ? "\(String(format: "%.1f", (alloc.value / totalValuation) * 100))%" : "—",
-                                    color: alloc.color
-                                )
+                // 2x2 Quick Action Cards Grid (Screenshot 2)
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                    // Card 1: Market Galaxy
+                    quickCard(
+                        title: "Market Galaxy",
+                        subtitle: "LSE & Global Movers",
+                        icon: "chart.line.uptrend.xyaxis",
+                        iconColor: Color(hex: "00F0FF"),
+                        boxBg: Color(hex: "00F0FF").opacity(0.15),
+                        boxBorder: Color(hex: "00F0FF").opacity(0.5)
+                    ) { onSelectTab(.market) }
+
+                    // Card 2: Learning Nexus
+                    quickCard(
+                        title: "Learning Nexus",
+                        subtitle: "6-Level Academy",
+                        icon: "square.stack.3d.up.fill",
+                        iconColor: Color(hex: "38BDF8"),
+                        boxBg: Color(hex: "0284C7").opacity(0.2),
+                        boxBorder: Color(hex: "0284C7").opacity(0.6)
+                    ) { onSelectTab(.learn) }
+
+                    // Card 3: Portfolio Constellation
+                    quickCard(
+                        title: "Portfolio Constellation",
+                        subtitle: "Holdings & Rebalance",
+                        icon: "chart.pie.fill",
+                        iconColor: Color(hex: "FBBF24"),
+                        boxBg: Color(hex: "FBBF24").opacity(0.18),
+                        boxBorder: Color(hex: "FBBF24").opacity(0.6)
+                    ) { onSelectTab(.portfolio) }
+
+                    // Card 4: Community Forum
+                    quickCard(
+                        title: "Community Forum",
+                        subtitle: "Discussions & Events",
+                        icon: "bubble.left.and.bubble.right.fill",
+                        iconColor: Color(hex: "2DD4BF"),
+                        boxBg: Color(hex: "14B8A6").opacity(0.2),
+                        boxBorder: Color(hex: "14B8A6").opacity(0.6)
+                    ) { onOpenCommunity() }
+                }
+
+                // Featured Market Assets Header
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("FEATURED MARKET ASSETS")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundColor(Color(hex: "FBBF24"))
+                        .tracking(0.8)
+                    Text("Live UK & Global Movers")
+                        .font(.system(size: 12))
+                        .foregroundColor(Color(hex: "94A3B8"))
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 4)
+
+                // Horizontal Carousel Cards
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 12) {
+                        ForEach(sampleAssets, id: \.ticker) { asset in
+                            Button(action: { onSelectTab(.market) }) {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    HStack {
+                                        Text(asset.type)
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundColor(Color(hex: "475569"))
+                                            .padding(.horizontal, 7)
+                                            .padding(.vertical, 2)
+                                            .background(Color(hex: "EEF2F6"))
+                                            .cornerRadius(6)
+                                        Spacer()
+                                        Text(asset.change)
+                                            .font(.system(size: 12, weight: .black))
+                                            .foregroundColor(Color(hex: "10B981"))
+                                    }
+                                    Text(asset.ticker)
+                                        .font(.system(size: 16, weight: .black))
+                                        .foregroundColor(Color(hex: "0F172A"))
+                                    Text(asset.price)
+                                        .font(.system(size: 13, weight: .bold))
+                                        .foregroundColor(Color(hex: "334155"))
+                                }
+                                .padding(14)
+                                .frame(width: 175)
+                                .background(Color.white)
+                                .cornerRadius(16)
+                                .shadow(color: Color.black.opacity(0.25), radius: 8, x: 0, y: 4)
                             }
+                            .buttonStyle(PlainButtonStyle())
                         }
                     }
                 }
-
-                // XP Progress Card
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("INVESTOR XP")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color(hex: "FBBF24"))
-                        Spacer()
-                        Text("\(profile.xp) XP")
-                            .font(.system(size: 13, weight: .black))
-                            .foregroundColor(Color(hex: "FBBF24"))
-                    }
-                    GeometryReader { geo in
-                        ZStack(alignment: .leading) {
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(Color(hex: "FBBF24").opacity(0.15))
-                                .frame(height: 8)
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(LinearGradient(colors: [Color(hex: "FBBF24"), Color(hex: "F97316")], startPoint: .leading, endPoint: .trailing))
-                                .frame(width: geo.size.width * min(Double(profile.xp) / 500.0, 1.0), height: 8)
-                                .animation(.easeInOut(duration: 0.6), value: profile.xp)
-                        }
-                    }
-                    .frame(height: 8)
-                    HStack {
-                        Text(xpTierLabel(profile.xp))
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "94A3B8"))
-                        Spacer()
-                        Text("\(max(0, 500 - profile.xp)) XP to next tier")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "64748B"))
-                    }
-                }
-                .padding(16)
-                .background(Color(hex: "071322").opacity(0.85))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "FBBF24").opacity(0.25), lineWidth: 1))
-                .cornerRadius(14)
-
-                // Streak + Quick Stats
-                HStack(spacing: 12) {
-                    statCard(icon: "flame.fill", value: "\(profile.streakDays)", label: "Day Streak", color: "F97316")
-                    statCard(icon: "briefcase.fill", value: "\(holdings.count)", label: "Holdings", color: "00F0FF")
-                    statCard(icon: "shield.fill", value: profile.isPro ? "PRO" : "FREE", label: "Plan", color: "A78BFA")
-                }
-
-                // Quick Academy Callout
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("INVESTOR ACADEMY")
-                            .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(Color(hex: "FBBF24"))
-                        Text("Master ETFs, ISAs & Compound Returns")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.white)
-                        Text("Earn XP to unlock Senior Investor status")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "94A3B8"))
-                    }
-                    Spacer()
-                    Image(systemName: "graduationcap.fill")
-                        .font(.system(size: 30))
-                        .foregroundColor(Color(hex: "00F0FF"))
-                }
-                .padding(16)
-                .background(Color(hex: "071322").opacity(0.8))
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "FBBF24").opacity(0.3), lineWidth: 1))
-                .cornerRadius(14)
             }
-            .padding(16)
-        }
-        .onAppear(perform: loadData)
-    }
-
-    private func loadData() {
-        firebaseService.fetchHoldings { fetched in
-            holdings = fetched
-            isLoading = false
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
     }
 
-    private func xpTierLabel(_ xp: Int) -> String {
-        switch xp {
-        case ..<100:  return "🌱 Novice Investor"
-        case ..<250:  return "📈 Junior Investor"
-        case ..<500:  return "💼 Associate Investor"
-        case ..<1000: return "🏆 Senior Investor"
-        default:      return "⭐ Elite Wealth Builder"
-        }
-    }
+    private func quickCard(
+        title: String,
+        subtitle: String,
+        icon: String,
+        iconColor: Color,
+        boxBg: Color,
+        boxBorder: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 10) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(boxBg)
+                        .frame(width: 38, height: 38)
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(boxBorder, lineWidth: 1))
+                    Image(systemName: icon)
+                        .font(.system(size: 18))
+                        .foregroundColor(iconColor)
+                }
 
-    private func statCard(icon: String, value: String, label: String, color: String) -> some View {
-        VStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 18))
-                .foregroundColor(Color(hex: color))
-            Text(value)
-                .font(.system(size: 16, weight: .black))
-                .foregroundColor(.white)
-            Text(label)
-                .font(.system(size: 10))
-                .foregroundColor(Color(hex: "94A3B8"))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .heavy))
+                        .foregroundColor(.white)
+                    Text(subtitle)
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "94A3B8"))
+                }
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(hex: "071322").opacity(0.85))
+            .cornerRadius(16)
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(hex: "00F0FF").opacity(0.22), lineWidth: 1))
         }
-        .frame(maxWidth: .infinity)
-        .padding(14)
-        .background(Color(hex: "0A1628").opacity(0.75))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(hex: color).opacity(0.25), lineWidth: 1))
-        .cornerRadius(12)
-    }
-}
-
-private struct AllocationCard: View {
-    let title: String; let value: String; let pct: String; let color: String
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title).font(.system(size: 10, weight: .semibold)).foregroundColor(Color(hex: "94A3B8")).lineLimit(1)
-            Text(value).font(.system(size: 14, weight: .bold)).foregroundColor(.white)
-            Text(pct).font(.system(size: 11, weight: .bold)).foregroundColor(Color(hex: color))
-        }
-        .padding(12)
-        .frame(width: 120, alignment: .leading)
-        .background(Color(hex: "0A1628").opacity(0.75))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(hex: color).opacity(0.2), lineWidth: 1))
-        .cornerRadius(12)
+        .buttonStyle(PlainButtonStyle())
     }
 }

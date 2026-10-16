@@ -3,271 +3,215 @@ import SwiftUI
 public struct PortfolioView: View {
     @EnvironmentObject private var firebaseService: FirebaseService
     @State private var holdings: [Holding] = []
-    @State private var isLoading: Bool = true
-    @State private var showOverlapChecker: Bool = false
-    @State private var showAddHolding: Bool = false
-
-    // Add Holding form state
-    @State private var newTicker: String = ""
-    @State private var newName: String = ""
-    @State private var newAssetType: String = "ETF"
-    @State private var newShares: String = ""
-    @State private var newAvgBuy: String = ""
-    @State private var newCurrentPrice: String = ""
-    @State private var newAlloc: String = "Global Core"
-    @State private var addError: String? = nil
-    @State private var isSaving: Bool = false
+    @State private var showAddModal: Bool = false
 
     public init() {}
 
-    public var totalValuation: Double { holdings.reduce(0) { $0 + $1.currentValue } }
-    public var totalCost: Double { holdings.reduce(0) { $0 + $1.totalCost } }
-    public var totalProfit: Double { totalValuation - totalCost }
+    private var totalVal: Double {
+        holdings.reduce(0) { $0 + $1.currentValue }
+    }
+
+    private var totalCost: Double {
+        holdings.reduce(0) { $0 + $1.totalCost }
+    }
+
+    private var totalReturn: Double {
+        totalVal - totalCost
+    }
+
+    private var returnPct: Double {
+        guard totalCost > 0 else { return 0.0 }
+        return (totalReturn / totalCost) * 100
+    }
 
     public var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                // LSE Live Feed Bar (Screenshot 4)
+                HStack {
+                    HStack(spacing: 6) {
+                        Circle().fill(Color(hex: "10B981")).frame(width: 6, height: 6)
+                        Text("LSE LIVE FEED")
+                            .font(.system(size: 10, weight: .black))
+                            .foregroundColor(Color(hex: "10B981"))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Color(hex: "10B981").opacity(0.12))
+                    .cornerRadius(6)
+                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color(hex: "10B981").opacity(0.4), lineWidth: 1))
 
-                // Portfolio Header
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("PORTFOLIO ASSETS")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color(hex: "94A3B8"))
-                        Spacer()
-                        Button(action: { showOverlapChecker = true }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "square.stack.3d.down.right.fill")
-                                Text("ETF Overlap")
-                            }
+                    Text("Today, 14:33")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "94A3B8"))
+
+                    Spacer()
+
+                    Button(action: {}) {
+                        Text("🔄 Refresh Quotes")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundColor(Color(hex: "00F0FF"))
-                            .padding(.horizontal, 10).padding(.vertical, 5)
-                            .background(Color(hex: "00F0FF").opacity(0.15))
-                            .cornerRadius(6)
-                        }
+                    }
+                }
+
+                // TOTAL PORTFOLIO VALUATION Card (Screenshot 4)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("TOTAL PORTFOLIO VALUATION")
+                        .font(.system(size: 11, weight: .black))
+                        .foregroundColor(Color(hex: "FBBF24"))
+                        .tracking(0.8)
+
+                    Text("£\(String(format: "%.2f", totalVal))")
+                        .font(.system(size: 34, weight: .heavy))
+                        .foregroundColor(.white)
+                        .padding(.vertical, 2)
+
+                    HStack {
+                        Text("Total Cost Basis: £\(String(format: "%.2f", totalCost))")
+                            .font(.system(size: 12))
+                            .foregroundColor(Color(hex: "94A3B8"))
+                        Spacer()
+                        Text("Unrealized Return: +£\(String(format: "%.2f", totalReturn)) (\(String(format: "%.1f", returnPct))%)")
+                            .font(.system(size: 12, weight: .heavy))
+                            .foregroundColor(Color(hex: "10B981"))
+                    }
+                }
+                .padding(18)
+                .background(Color(hex: "071322").opacity(0.85))
+                .cornerRadius(18)
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(hex: "00F0FF").opacity(0.35), lineWidth: 1))
+
+                // Account & Geographic Allocation Card (Screenshot 4)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("Account & Geographic Allocation")
+                            .font(.system(size: 13, weight: .heavy))
+                            .foregroundColor(.white)
+                        Spacer()
+                        Text("Rebalance Tool →")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(Color(hex: "00F0FF"))
                     }
 
-                    if isLoading {
-                        HStack(spacing: 10) {
-                            ProgressView().progressViewStyle(CircularProgressViewStyle(tint: Color(hex: "00F0FF")))
-                            Text("Loading holdings…")
-                                .font(.system(size: 14))
-                                .foregroundColor(Color(hex: "94A3B8"))
-                        }.padding(.vertical, 6)
-                    } else {
-                        Text("£\(String(format: "%.2f", totalValuation))")
-                            .font(.system(size: 32, weight: .heavy))
-                            .foregroundColor(.white)
+                    Text("By UK Tax Vehicle:")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "94A3B8"))
 
-                        if totalCost > 0 {
-                            HStack(spacing: 6) {
-                                Image(systemName: totalProfit >= 0 ? "arrow.up.forward" : "arrow.down.forward")
-                                    .foregroundColor(totalProfit >= 0 ? Color(hex: "34D399") : Color(hex: "F43F5E"))
-                                Text("\(totalProfit >= 0 ? "+" : "")£\(String(format: "%.2f", totalProfit)) (\(String(format: "%.1f", (totalProfit/totalCost)*100))%)")
-                                    .font(.system(size: 13, weight: .bold))
-                                    .foregroundColor(totalProfit >= 0 ? Color(hex: "34D399") : Color(hex: "F43F5E"))
-                                Text("Unrealised Gain")
+                    VStack(spacing: 8) {
+                        allocationBar(label: "Stocks & Shares ISA", pct: "80%", width: 0.8, color: Color(hex: "00F0FF"))
+                        allocationBar(label: "General Investment Account (GIA)", pct: "20%", width: 0.2, color: Color(hex: "FBBF24"))
+                    }
+
+                    Text("By Geographic Exposure:")
+                        .font(.system(size: 11))
+                        .foregroundColor(Color(hex: "94A3B8"))
+                        .padding(.top, 4)
+
+                    VStack(spacing: 8) {
+                        allocationBar(label: "Global All-World (VWRP)", pct: "60%", width: 0.6, color: Color(hex: "38BDF8"))
+                        allocationBar(label: "US S&P 500 (VUAG)", pct: "40%", width: 0.4, color: Color(hex: "10B981"))
+                    }
+                }
+                .padding(18)
+                .background(Color(hex: "071322").opacity(0.85))
+                .cornerRadius(18)
+                .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(hex: "00F0FF").opacity(0.25), lineWidth: 1))
+
+                // Holdings Header with (+) Button
+                HStack {
+                    Text("Holdings (\(holdings.count))")
+                        .font(.system(size: 16, weight: .black))
+                        .foregroundColor(.white)
+                    Spacer()
+                    Button(action: { showAddModal = true }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                            Text("Add")
+                        }
+                        .font(.system(size: 12, weight: .black))
+                        .foregroundColor(Color(hex: "040B14"))
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(Color(hex: "00F0FF"))
+                        .cornerRadius(20)
+                    }
+                }
+                .padding(.top, 4)
+
+                if holdings.isEmpty {
+                    VStack(spacing: 12) {
+                        Text("No holdings in portfolio yet.")
+                            .font(.system(size: 13))
+                            .foregroundColor(Color(hex: "94A3B8"))
+
+                        Button(action: {
+                            holdings = [
+                                Holding(id: "h1", ticker: "VWRP", name: "Vanguard FTSE All-World UCITS ETF", shares: 45, avgBuyPrice: 104.20, currentPrice: 112.40, allocationCategory: "Global", currency: "GBP"),
+                                Holding(id: "h2", ticker: "VUAG", name: "Vanguard S&P 500 UCITS ETF", shares: 25, avgBuyPrice: 79.10, currentPrice: 85.25, allocationCategory: "US Equities", currency: "GBP")
+                            ]
+                        }) {
+                            Text("Load Sample Holdings (VWRP + VUAG)")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(Color(hex: "00F0FF"))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color(hex: "00F0FF").opacity(0.15))
+                                .cornerRadius(10)
+                                .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color(hex: "00F0FF"), lineWidth: 1))
+                        }
+                    }
+                    .padding(24)
+                    .frame(maxWidth: .infinity)
+                    .background(Color(hex: "071322").opacity(0.85))
+                    .cornerRadius(16)
+                } else {
+                    ForEach(holdings, id: \.id) { h in
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(h.ticker)
+                                    .font(.system(size: 16, weight: .black))
+                                    .foregroundColor(.white)
+                                Text("\(h.name) • \(String(format: "%.0f", h.shares)) Shares")
                                     .font(.system(size: 11))
                                     .foregroundColor(Color(hex: "94A3B8"))
                             }
-                        }
-                    }
-                }
-                .padding(20)
-                .background(Color(hex: "0A1628").opacity(0.85))
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(hex: "00F0FF").opacity(0.25), lineWidth: 1))
-                .cornerRadius(16)
-
-                // Add Holding Button
-                Button(action: { showAddHolding = true }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Add Holding to Vault")
-                    }
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(Color(hex: "040B14"))
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 44)
-                    .background(Color(hex: "00F0FF"))
-                    .cornerRadius(10)
-                }
-
-                // Holdings List
-                if !isLoading {
-                    if holdings.isEmpty {
-                        VStack(spacing: 12) {
-                            Image(systemName: "briefcase")
-                                .font(.system(size: 40))
-                                .foregroundColor(Color(hex: "334155"))
-                            Text("No holdings yet")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(Color(hex: "64748B"))
-                            Text("Add your first holding to start tracking your portfolio.")
-                                .font(.system(size: 13))
-                                .foregroundColor(Color(hex: "475569"))
-                                .multilineTextAlignment(.center)
-                        }
-                        .padding(40)
-                    } else {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("ACTIVE HOLDINGS (\(holdings.count))")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(Color(hex: "94A3B8"))
-
-                            ForEach(holdings) { h in
-                                HStack {
-                                    VStack(alignment: .leading, spacing: 3) {
-                                        HStack(spacing: 6) {
-                                            Text(h.ticker)
-                                                .font(.system(size: 15, weight: .bold))
-                                                .foregroundColor(.white)
-                                            Text(h.assetType)
-                                                .font(.system(size: 9, weight: .semibold))
-                                                .foregroundColor(Color(hex: "00F0FF"))
-                                                .padding(.horizontal, 6).padding(.vertical, 2)
-                                                .background(Color(hex: "00F0FF").opacity(0.12))
-                                                .cornerRadius(4)
-                                        }
-                                        Text(h.name)
-                                            .font(.system(size: 11))
-                                            .foregroundColor(Color(hex: "94A3B8"))
-                                            .lineLimit(1)
-                                        Text("\(String(format: "%.4f", h.shares)) shares • Avg £\(String(format: "%.2f", h.avgBuyPrice))")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(Color(hex: "64748B"))
-                                    }
-                                    Spacer()
-                                    VStack(alignment: .trailing, spacing: 3) {
-                                        Text("£\(String(format: "%.2f", h.currentValue))")
-                                            .font(.system(size: 14, weight: .bold))
-                                            .foregroundColor(.white)
-                                        let pl = h.profitLoss
-                                        let plp = h.profitLossPercent
-                                        Text("\(pl >= 0 ? "+" : "")£\(String(format: "%.2f", pl)) (\(String(format: "%.1f", plp))%)")
-                                            .font(.system(size: 11, weight: .semibold))
-                                            .foregroundColor(pl >= 0 ? Color(hex: "34D399") : Color(hex: "F43F5E"))
-                                    }
-                                }
-                                .padding(14)
-                                .background(Color(hex: "0A1628").opacity(0.7))
-                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color(hex: "00F0FF").opacity(0.15), lineWidth: 1))
-                                .cornerRadius(12)
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("£\(String(format: "%.2f", h.currentValue))")
+                                    .font(.system(size: 15, weight: .heavy))
+                                    .foregroundColor(.white)
+                                Text("+£\(String(format: "%.2f", h.profit))")
+                                    .font(.system(size: 11, weight: .bold))
+                                    .foregroundColor(Color(hex: "10B981"))
                             }
                         }
+                        .padding(14)
+                        .background(Color(hex: "071322").opacity(0.85))
+                        .cornerRadius(14)
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "00F0FF").opacity(0.2), lineWidth: 1))
                     }
                 }
             }
-            .padding(16)
-        }
-        .onAppear(perform: loadHoldings)
-        .sheet(isPresented: $showOverlapChecker) { overlapSheet }
-        .sheet(isPresented: $showAddHolding) { addHoldingSheet }
-    }
-
-    private func loadHoldings() {
-        isLoading = true
-        firebaseService.fetchHoldings { fetched in
-            holdings = fetched
-            isLoading = false
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 24)
         }
     }
 
-    // MARK: - Add Holding Sheet
-    private var addHoldingSheet: some View {
-        NavigationView {
-            Form {
-                Section(header: Text("Asset Details")) {
-                    TextField("Ticker (e.g. VWRP)", text: $newTicker).autocapitalization(.allCharacters).autocorrectionDisabled()
-                    TextField("Name (e.g. Vanguard All-World ETF)", text: $newName)
-                    Picker("Asset Type", selection: $newAssetType) {
-                        ForEach(["ETF","Global ETF","UK Equity ETF","US Equity ETF","UK Individual Stock","Bond","Cash"], id: \.self) { Text($0).tag($0) }
-                    }
-                }
-                Section(header: Text("Position")) {
-                    TextField("Shares (e.g. 250)", text: $newShares).keyboardType(.decimalPad)
-                    TextField("Avg Buy Price £ (e.g. 92.40)", text: $newAvgBuy).keyboardType(.decimalPad)
-                    TextField("Current Price £ (e.g. 114.20)", text: $newCurrentPrice).keyboardType(.decimalPad)
-                }
-                Section(header: Text("Allocation Category")) {
-                    Picker("Category", selection: $newAlloc) {
-                        ForEach(["Global Core","US Equities","UK Large Cap","UK Mid Cap","Emerging Markets","Healthcare Core","Bonds","Cash Vault"], id: \.self) { Text($0).tag($0) }
-                    }
-                }
-                if let err = addError {
-                    Section { Text(err).foregroundColor(.red).font(.system(size: 12)) }
-                }
-            }
-            .navigationTitle("Add Holding")
-            .navigationBarItems(
-                leading: Button("Cancel") { showAddHolding = false },
-                trailing: Button(action: saveHolding) {
-                    if isSaving { ProgressView() } else { Text("Save").bold() }
-                }.disabled(isSaving || newTicker.isEmpty || newShares.isEmpty)
-            )
-        }
-    }
-
-    private func saveHolding() {
-        guard let shares = Double(newShares.replacingOccurrences(of: ",", with: ".")),
-              let avg = Double(newAvgBuy.replacingOccurrences(of: ",", with: ".")),
-              let price = Double(newCurrentPrice.replacingOccurrences(of: ",", with: "."))
-        else {
-            addError = "Please enter valid numbers for shares and prices."
-            return
-        }
-        isSaving = true
-        addError = nil
-        let h = Holding(
-            ticker: newTicker.uppercased().trimmingCharacters(in: .whitespaces),
-            name: newName.isEmpty ? newTicker.uppercased() : newName,
-            assetType: newAssetType,
-            shares: shares, avgBuyPrice: avg, currentPrice: price,
-            allocationCategory: newAlloc
-        )
-        firebaseService.writeHolding(h, userId: firebaseService.currentUser?.localId ?? "") { ok in
-            isSaving = false
-            if ok {
-                holdings.insert(h, at: 0)
-                newTicker = ""; newName = ""; newShares = ""; newAvgBuy = ""; newCurrentPrice = ""
-                showAddHolding = false
-            } else {
-                addError = "Failed to save. Please check your connection."
-            }
-        }
-    }
-
-    // MARK: - ETF Overlap Sheet
-    private var overlapSheet: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                Image(systemName: "square.stack.3d.down.right.fill")
-                    .font(.system(size: 44))
-                    .foregroundColor(Color(hex: "FBBF24"))
-                Text("ETF Overlap Checker")
-                    .font(.system(size: 22, weight: .bold))
-                VStack(spacing: 12) {
-                    ForEach(holdings.filter { $0.assetType.contains("ETF") }) { h in
-                        HStack {
-                            Text(h.ticker).font(.system(size: 14, weight: .bold))
-                            Spacer()
-                            Text(h.name).font(.system(size: 12)).foregroundColor(.secondary).lineLimit(1)
-                        }
-                        .padding(10)
-                        .background(Color(hex: "0A1628").opacity(0.6))
-                        .cornerRadius(8)
-                    }
-                }
-                .padding(.horizontal)
-                Text("VWRP + VUAG overlap: ~64.2% — significant double-exposure to Apple, Microsoft, NVIDIA & Amazon.")
-                    .font(.system(size: 12))
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
+    private func allocationBar(label: String, pct: String, width: CGFloat, color: Color) -> some View {
+        VStack(spacing: 4) {
+            HStack {
+                Text(label).font(.system(size: 11)).foregroundColor(.white)
                 Spacer()
+                Text(pct).font(.system(size: 11, weight: .bold)).foregroundColor(color)
             }
-            .padding(.top, 30)
-            .navigationBarItems(trailing: Button("Close") { showOverlapChecker = false })
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: 3).fill(Color.white.opacity(0.1)).frame(height: 5)
+                    RoundedRectangle(cornerRadius: 3).fill(color).frame(width: geo.size.width * width, height: 5)
+                }
+            }
+            .frame(height: 5)
         }
     }
 }
