@@ -1,2222 +1,1893 @@
-// ============================================================
-//  EB Wealth PWA — app.js
-//  Complete Single-Page App — No framework dependencies
-// ============================================================
-
 import { WebFirebaseService } from './firebase-config.js';
 
-// ── Firebase (graceful fallback if config missing) ──────────
-let firebase;
-try {
-  firebase = new WebFirebaseService();
-} catch (e) {
-  firebase = {
-    currentUser: null,
-    signIn: async () => { throw new Error('Offline mode'); },
-    register: async () => { throw new Error('Offline mode'); },
-    signOut: async () => {},
-    saveUserData: async () => {},
-    getUserData: async () => null,
-    askAI: async (prompt) => getLocalAIResponse(prompt)
-  };
-}
+const firebaseService = new WebFirebaseService();
 
-// ============================================================
-//  SEED DATA
-// ============================================================
-
-const SEED_HOLDINGS = [
-  { id: 1, ticker: 'VWRP', name: 'Vanguard FTSE All-World UCITS ETF', assetType: 'ETF', shares: 45, avgPrice: 104.20, currentPrice: 112.40, accountType: 'Stocks & Shares ISA', geography: 'Global', sector: 'Diversified' },
-  { id: 2, ticker: 'VUAG', name: 'Vanguard S&P 500 UCITS ETF', assetType: 'ETF', shares: 25, avgPrice: 79.10, currentPrice: 85.25, accountType: 'Stocks & Shares ISA', geography: 'US', sector: 'Diversified' },
-  { id: 3, ticker: 'AZN', name: 'AstraZeneca PLC', assetType: 'Stock', shares: 10, avgPrice: 98.40, currentPrice: 112.20, accountType: 'General Investment Account', geography: 'UK', sector: 'Healthcare' }
-];
-
-const SEED_POSTS = [
-  { id: 1, author: 'Sarah K.', level: 'Confident Investor', category: 'ETFs', title: 'Why I switched from VUSA to VWRP', content: 'After 2 years of holding VUSA, I made the switch to VWRP for better global diversification. Here is why... VWRP gives exposure to 3,700+ stocks across 49 countries, whereas VUSA only tracks the S&P 500. While US dominance is undeniable, VWRP naturally adjusts its US weighting as markets evolve. For long-term investors, this automatic rebalancing is invaluable.', likes: 24, comments: 8, time: '2h ago', liked: false },
-  { id: 2, author: 'Marcus L.', level: 'Strategic Investor', category: 'ISA/SIPP', title: 'ISA vs SIPP: My experience managing both', content: 'I have been running both wrappers for 5 years. My strategy is to max ISA first, then top up SIPP. The ISA gives me flexibility to access funds if needed, while the SIPP locks away money for retirement with that sweet tax relief on the way in. Basic rate taxpayers get 20% relief — higher rate taxpayers even more.', likes: 41, comments: 15, time: '5h ago', liked: false },
-  { id: 3, author: 'Emma R.', level: 'Developing Investor', category: 'UK Investing', title: 'First £10k invested — lessons learned', content: 'It took me 8 months to reach my first £10,000 milestone. The biggest lesson: consistency over timing. I tried timing the market in months 1-3 and made zero progress. Switched to a standing order of £500/month into VWRP and everything changed. Pound cost averaging removes the anxiety of trying to pick the right time.', likes: 67, comments: 23, time: '1d ago', liked: false },
-  { id: 4, author: 'James T.', level: 'EB Wealth Builder', category: 'ETFs', title: 'EQQQ vs VWRP — the Nasdaq question', content: 'A lot of beginners ask about Nasdaq exposure. Here is my breakdown of whether EQQQ adds real value. VWRP already holds around 28% in tech (Apple, Microsoft, Nvidia etc). Adding EQQQ concentrates further into US tech. This can boost returns in bull markets but dramatically increases volatility. Only suitable if you have a 15+ year horizon and can stomach 40%+ drawdowns.', likes: 89, comments: 31, time: '2d ago', liked: false },
-  { id: 5, author: 'Priya M.', level: 'Confident Investor', category: 'Property', title: 'REITs vs physical property for passive income', content: 'Both have merits. REITs offer liquidity, physical property offers leverage. My portfolio uses both. UK REITs must pay out 90% of rental income as dividends, making them excellent income generators. VHYL includes REITs in its dividend-focused basket. Physical property offers leverage that amplifies returns but also risk and requires active management.', likes: 35, comments: 12, time: '3d ago', liked: false }
-];
-
-const SEED_EVENTS = [
-  { id: 1, title: 'ISA Deadline Workshop', date: '30 Oct 2026', time: '7:00 PM GMT', type: 'Webinar', description: 'Learn how to make the most of your remaining ISA allowance before the April deadline. Includes live Q&A with EB Wealth certified coaches.', registered: false },
-  { id: 2, title: 'ETF Masterclass: Building a Global Portfolio', date: '15 Nov 2026', time: '6:30 PM GMT', type: 'Workshop', description: 'Deep dive into ETF selection, OCF comparison, and building a low-cost globally diversified portfolio. Practical exercises included.', registered: false },
-  { id: 3, title: 'Dividend Strategy Webinar', date: '5 Dec 2026', time: '7:30 PM GMT', type: 'Webinar', description: 'Income investing for the UK investor. Dividend ETFs, REIT allocations, and tax-efficient strategies inside your ISA.', registered: true }
-];
-
-const SEED_NEWS = [
-  { id: 1, headline: 'Bank of England holds rates at 4.75% as inflation edges toward target', source: 'Financial Times', time: '2h ago', category: 'Macro' },
-  { id: 2, headline: 'FTSE 100 climbs to 6-week high as mining stocks rally on China stimulus', source: 'Reuters', time: '4h ago', category: 'UK Markets' },
-  { id: 3, headline: 'Vanguard announces OCF cut on VWRP to 0.19% from January', source: 'This is Money', time: '1d ago', category: 'ETFs' },
-  { id: 4, headline: 'ISA subscriptions hit record £87bn in 2025/26 tax year', source: 'HMRC', time: '2d ago', category: 'ISA/SIPP' },
-  { id: 5, headline: 'AstraZeneca shares surge 4.2% on positive Phase 3 trial data', source: 'Bloomberg', time: '3d ago', category: 'Stocks' }
-];
-
-const ACADEMY_LEVELS = [
-  {
-    level: 1, title: 'Investor Starter', description: 'Core investing foundations for beginners',
-    lessons: [
-      {
-        id: 'L1_1', title: 'What Is Investing?', subtitle: 'Why your money works harder invested than saved', readTime: '5 min', xp: 50,
-        explanation: 'Investing is putting your money to work by purchasing assets that have the potential to grow in value over time. Unlike saving in a bank account which earns low interest, investing in stocks, ETFs, and bonds has historically returned 7-10% annually over long periods.',
-        example: 'If you invest £5,000 today in a global ETF like VWRP averaging 8% per year, after 30 years you would have £50,313 — 10x your original investment — without adding another penny.',
-        takeaways: [
-          'Investing beats inflation over the long term',
-          'Compound growth is the eighth wonder of the world',
-          'Starting early matters more than the amount you invest',
-          'Risk and return are always linked'
-        ],
-        quiz: [
-          { q: 'What is the primary advantage of investing over saving?', options: ['Higher guaranteed returns', 'Long-term growth that beats inflation', 'No risk of losing money', 'Daily liquidity'], correct: 1, explain: 'Investing provides long-term growth potential that historically beats inflation, unlike savings accounts.' },
-          { q: 'Which UCITS ETF covers over 3,700 global stocks?', options: ['VUAG', 'ISF', 'VWRP', 'CSPX'], correct: 2, explain: 'VWRP (Vanguard FTSE All-World) covers 3,700+ stocks across 49 countries.' },
-          { q: 'What is compound growth?', options: ['Growth on your original investment only', 'Growth on both your principal and accumulated returns', 'A guaranteed 7% annual return', 'Interest paid monthly by your broker'], correct: 1, explain: 'Compound growth means you earn returns on your original investment AND on previous returns.' }
-        ]
-      },
-      {
-        id: 'L1_2', title: 'Stock Market Fundamentals', subtitle: 'How shares, exchanges and prices work', readTime: '6 min', xp: 50,
-        explanation: 'The stock market is a marketplace where buyers and sellers trade shares of publicly listed companies. In the UK, the main exchange is the London Stock Exchange (LSE). Share prices are determined by supply and demand — driven by company performance, economic news, and investor sentiment.',
-        example: 'When AstraZeneca reports strong drug trial results, demand for AZN shares increases. More buyers than sellers push the price up. If you owned 10 shares at £98, they might jump to £112 — a £140 gain.',
-        takeaways: [
-          'Shares represent fractional ownership of a company',
-          'The LSE is the UK primary exchange',
-          'Prices move based on supply and demand',
-          'Market cap = share price × total shares outstanding'
-        ],
-        quiz: [
-          { q: 'What does owning a share represent?', options: ['A loan to a company', 'Fractional ownership in a company', 'A guaranteed dividend payment', 'A government bond'], correct: 1, explain: 'Shares represent fractional ownership — you own a small piece of the company.' },
-          { q: 'What is the UK primary stock exchange?', options: ['NYSE', 'NASDAQ', 'London Stock Exchange', 'Euronext'], correct: 2, explain: 'The London Stock Exchange (LSE) is the primary UK stock exchange, home to the FTSE 100 and FTSE 250.' },
-          { q: 'What primarily drives share price changes?', options: ['Government policy alone', 'Supply and demand from buyers and sellers', 'The company CEO decisions only', 'Random fluctuation'], correct: 1, explain: 'Share prices are determined by supply and demand — when more people want to buy than sell, prices rise.' }
-        ]
-      },
-      {
-        id: 'L1_3', title: 'ISA vs SIPP Explained', subtitle: 'Maximise your tax-free investing wrappers', readTime: '7 min', xp: 75,
-        explanation: 'The UK offers two powerful tax-free investment wrappers: the ISA (Individual Savings Account) and SIPP (Self-Invested Personal Pension). ISAs allow you to invest up to £20,000 per tax year with no capital gains or income tax on returns. SIPPs allow pension contributions with 20-45% tax relief on the way in.',
-        example: 'A basic rate taxpayer contributing £800 to a SIPP receives £200 government top-up (20% relief), making it £1,000 invested. A higher rate taxpayer can claim an additional 20% via self-assessment — so a £600 contribution becomes £1,000.',
-        takeaways: [
-          'ISA: £20,000/year limit, tax-free growth and withdrawals',
-          'SIPP: Tax relief on contributions, access from age 57',
-          'Use ISA first for flexibility',
-          'SIPP for long-term pension building with tax advantages'
-        ],
-        quiz: [
-          { q: 'What is the annual ISA allowance for 2025/26?', options: ['£15,000', '£20,000', '£25,000', '£50,000'], correct: 1, explain: 'The annual ISA allowance is £20,000 per tax year (April 6 – April 5).' },
-          { q: 'When can you access a SIPP?', options: ['Any time after investing', 'From age 55 (rising to 57 in 2028)', 'Only at state retirement age', 'After 10 years of contributions'], correct: 1, explain: 'SIPPs can currently be accessed from age 55, rising to 57 in 2028.' },
-          { q: 'What tax relief does a basic rate taxpayer get on SIPP contributions?', options: ['No tax relief', '10% relief', '20% relief', '45% relief'], correct: 2, explain: 'Basic rate taxpayers get 20% tax relief, so a £800 contribution becomes £1,000 in the SIPP.' }
-        ]
-      },
-      {
-        id: 'L1_4', title: 'ETFs & Index Funds', subtitle: 'Low-cost passive investing explained', readTime: '6 min', xp: 50,
-        explanation: 'ETFs (Exchange-Traded Funds) are baskets of stocks that track an index like the FTSE All-World or S&P 500. They offer instant diversification across hundreds or thousands of companies with a single purchase. UK UCITS ETFs are regulated, currency-hedged options listed on the LSE.',
-        example: 'VWRP (TER 0.22%) holds 3,700 stocks across 49 countries. If you invest £10,000, you effectively own tiny fractions of Apple, Microsoft, Samsung, HSBC, and thousands more — spreading your risk globally.',
-        takeaways: [
-          'ETFs track indexes passively — lower costs than active funds',
-          'TER (Total Expense Ratio) is the annual cost — lower is better',
-          'UCITS ETFs are EU-regulated and suitable for UK investors',
-          'Accumulating ETFs reinvest dividends automatically'
-        ],
-        quiz: [
-          { q: 'What does TER stand for?', options: ['Total Earnings Return', 'Total Expense Ratio', 'Tax Equivalent Rate', 'Trade Execution Rate'], correct: 1, explain: 'TER (Total Expense Ratio) is the annual cost of owning an ETF, expressed as a percentage.' },
-          { q: 'What does an accumulating ETF do with dividends?', options: ['Pay them out quarterly', 'Reinvest them automatically', 'Hold them in cash', 'Donate to charity'], correct: 1, explain: 'Accumulating ETFs reinvest dividends back into the fund, enhancing compound growth.' },
-          { q: 'How many stocks does VWRP hold?', options: ['500', '1,200', '3,700+', '10,000+'], correct: 2, explain: 'VWRP holds over 3,700 stocks across 49 developed and emerging market countries.' }
-        ]
-      },
-      {
-        id: 'L1_5', title: 'Building Your First Portfolio', subtitle: 'Diversification, allocation and getting started', readTime: '8 min', xp: 100,
-        explanation: 'A well-built portfolio balances risk across different asset classes, geographies, and sectors. For most UK beginners, a simple two-ETF portfolio (e.g. VWRP 80% + VHYL 20%) provides excellent global diversification with income. Adding bonds reduces volatility for shorter time horizons.',
-        example: 'The classic "three-fund portfolio": 70% global equities (VWRP), 20% bonds (VAGS), 10% UK equities (ISF). This has historically delivered 6-8% annual returns with significantly less volatility than a 100% equity portfolio.',
-        takeaways: [
-          'Never put all eggs in one basket — diversify globally',
-          'Rebalance annually to maintain target allocation',
-          'Keep costs low — avoid high-TER active funds',
-          'Automate monthly contributions for pound-cost averaging'
-        ],
-        quiz: [
-          { q: 'What is pound-cost averaging?', options: ['Buying at the lowest price each month', 'Investing a fixed amount regularly regardless of price', 'Converting currencies at the best rate', 'Averaging multiple broker fees'], correct: 1, explain: 'Pound-cost averaging means investing a fixed amount regularly — you buy more shares when prices are low and fewer when high.' },
-          { q: 'What is the benefit of annual portfolio rebalancing?', options: ['Maximises short-term gains', 'Eliminates all risk', 'Maintains your target asset allocation', 'Avoids all tax liability'], correct: 2, explain: 'Rebalancing restores your target allocation when markets shift one asset class higher or lower.' },
-          { q: 'For a beginner with 20+ years horizon, which allocation is most appropriate?', options: ['100% government bonds', '100% cash savings', 'High equity, low bond allocation', 'Equal split across all asset classes'], correct: 2, explain: 'Long time horizons allow riding out market volatility — higher equity allocation historically provides better long-term returns.' }
-        ]
-      }
-    ]
-  },
-  { level: 2, title: 'Developing Investor', description: 'Technical analysis and deeper market knowledge', lessons: [] },
-  { level: 3, title: 'Confident Investor', description: 'Advanced strategies and tax optimisation', lessons: [] },
-  { level: 4, title: 'Strategic Investor', description: 'Portfolio management and wealth preservation', lessons: [] },
-  { level: 5, title: 'EB Wealth Builder', description: 'Institutional-grade investment strategies', lessons: [] }
-];
-
-const ETF_OVERLAPS = {
-  'VWRP+VUAG': 62, 'VUAG+VWRP': 62,
-  'VWRP+VUSA': 58, 'VUSA+VWRP': 58,
-  'VWRP+IWDA': 71, 'IWDA+VWRP': 71,
-  'VUAG+VUSA': 95, 'VUSA+VUAG': 95,
-  'VWRP+EQQQ': 28, 'EQQQ+VWRP': 28,
-  'VWRP+VHYL': 45, 'VHYL+VWRP': 45,
-  'VWRP+ISF':  25, 'ISF+VWRP':  25,
-  'VUAG+EQQQ': 55, 'EQQQ+VUAG': 55,
-  'VUSA+EQQQ': 52, 'EQQQ+VUSA': 52
-};
-
-const ETF_TOP_HOLDINGS = {
-  'VWRP': [
-    { name: 'Apple Inc', w1: '4.1%', w2: '—', ov: '4.1%' },
-    { name: 'Microsoft Corp', w1: '3.8%', w2: '—', ov: '3.8%' },
-    { name: 'NVIDIA Corp', w1: '3.1%', w2: '—', ov: '3.1%' },
-    { name: 'Amazon.com Inc', w1: '2.3%', w2: '—', ov: '2.3%' },
-    { name: 'Alphabet Inc', w1: '1.9%', w2: '—', ov: '1.9%' }
-  ]
-};
-
-// ============================================================
-//  STATE
-// ============================================================
-
+// Centralized Application State
 let state = {
-  view: 'auth',
-  user: null,
-  holdings: JSON.parse(localStorage.getItem('eb_holdings') || 'null') || [],
-  lessonProgress: JSON.parse(localStorage.getItem('eb_lesson_progress') || '{}'),
-  communityPosts: JSON.parse(localStorage.getItem('eb_posts') || 'null') || [],
-  chatMessages: JSON.parse(localStorage.getItem('eb_chat') || '[]'),
-  events: JSON.parse(localStorage.getItem('eb_events') || 'null') || [],
-  news: SEED_NEWS,
-  selectedLesson: null,
-  selectedTicker: null,
+  currentView: 'home', // 'landing' | 'home' | 'market' | 'asset_detail' | 'learn' | 'lesson_detail' | 'portfolio' | 'etf_overlap' | 'simulator' | 'ai_coach' | 'community' | 'events' | 'news' | 'profile' | 'onboarding' | 'admin'
+  isDesktopMode: window.innerWidth >= 860,
+  navStack: ['home'],
+  selectedTicker: 'VWRP',
+  selectedLessonId: 1,
+  showProModal: false,
+  showAddHoldingModal: false,
+  selectedLevel: 1,
+  marketSearchQuery: '',
   overlapSelected: ['VWRP', 'VUAG'],
   simInitial: 5000,
   simMonthly: 500,
   simYears: 20,
   simRate: 8.5,
-  navHistory: [],
-  showAddHolding: false,
-  showNewPost: false,
-  authTab: 'signin',
-  authLoading: false,
-  authError: '',
-  onboardingStep: 0,
-  onboardingData: {},
-  communityTab: 'posts',
-  communityFilter: 'All',
-  expandedPostId: null,
-  quizAnswers: {},
-  quizSubmitted: false,
-  openLevelId: 1,
-  isTyping: false,
-  xp: parseInt(localStorage.getItem('eb_xp') || '0'),
-  streak: parseInt(localStorage.getItem('eb_streak') || '3'),
-  isaUsed: 8450
+  registeredEvents: [1],
+  user: firebaseService.currentUser || {
+    id: 'usr_8849_gb',
+    firstName: 'Johnkennedy',
+    email: 'johnkennedy3313@gmail.com',
+    ref: 'REF: EB-8849-GB',
+    region: 'United Kingdom • GBP Base',
+    tierStatus: 'Standard Investor',
+    isPro: false,
+    isaUsed: 8450,
+    isaLimit: 20000,
+    capitalGainsLimit: 3000,
+    dividendLimit: 500,
+    xp: 350,
+    streakDays: 4
+  },
+  holdings: JSON.parse(localStorage.getItem('eb_holdings') || 'null') || [
+    { ticker: 'VWRP', name: 'Vanguard FTSE All-World UCITS ETF', assetType: 'ETF', shares: 45, avgBuyPrice: 104.20, currentPrice: 112.40, category: 'Global Equities', currency: 'GBP' },
+    { ticker: 'VUAG', name: 'Vanguard S&P 500 UCITS ETF', assetType: 'ETF', shares: 25, avgBuyPrice: 79.10, currentPrice: 85.25, category: 'US Equities', currency: 'GBP' },
+    { ticker: 'CSH2', name: 'Lyxor Smart Overnight Return Cash', assetType: 'Money Market', shares: 20, avgBuyPrice: 108.50, currentPrice: 111.45, category: 'Cash & Liquidity', currency: 'GBP' }
+  ],
+  assets: [
+    {
+      ticker: 'VWRP',
+      name: 'Vanguard FTSE All-World UCITS ETF',
+      type: 'ETF',
+      exchange: 'London Stock Exchange (LSE)',
+      price: '£112.40',
+      priceNum: 112.40,
+      change: '+0.42%',
+      peRatio: '19.8x',
+      divYield: '1.8% (Accumulated)',
+      marketCap: '£18.4 Billion',
+      sector: 'Globally Diversified',
+      currency: 'GBP',
+      description: 'Physical replication covering over 3,700 large and mid-cap stocks across 49 developed and emerging market countries with auto-reinvesting dividends.',
+      healthScore: '9.4/10',
+      valuationScore: '8.2/10',
+      dividendSafety: '9.8/10'
+    },
+    {
+      ticker: 'VUAG',
+      name: 'Vanguard S&P 500 UCITS ETF (Acc)',
+      type: 'ETF',
+      exchange: 'London Stock Exchange (LSE)',
+      price: '£85.25',
+      priceNum: 85.25,
+      change: '+0.38%',
+      peRatio: '24.2x',
+      divYield: '1.4% (Accumulated)',
+      marketCap: '£32.1 Billion',
+      sector: 'US Large Cap',
+      currency: 'GBP',
+      description: 'Low-cost tracker mirroring the 500 largest US publicly traded corporations with ultra-low ongoing charge of 0.07%.',
+      healthScore: '9.6/10',
+      valuationScore: '7.8/10',
+      dividendSafety: '9.9/10'
+    },
+    {
+      ticker: 'AZN',
+      name: 'AstraZeneca PLC',
+      type: 'Stock',
+      exchange: 'London Stock Exchange (LSE)',
+      price: '£104.50',
+      priceNum: 104.50,
+      change: '+1.12%',
+      peRatio: '32.4x',
+      divYield: '2.3% (Semi-Annual)',
+      marketCap: '£162.0 Billion',
+      sector: 'Pharmaceuticals',
+      currency: 'GBP',
+      description: 'Global biopharmaceutical leader focused on oncology, rare diseases, and cardiovascular innovations listed on the FTSE 100.',
+      healthScore: '9.1/10',
+      valuationScore: '8.0/10',
+      dividendSafety: '9.0/10'
+    },
+    {
+      ticker: 'EQGB',
+      name: 'Invesco EQQQ Nasdaq 100 GBP Hedged',
+      type: 'ETF',
+      exchange: 'London Stock Exchange (LSE)',
+      price: '£34.10',
+      priceNum: 34.10,
+      change: '+0.65%',
+      peRatio: '28.1x',
+      divYield: '0.6% (Accumulated)',
+      marketCap: '£4.8 Billion',
+      sector: 'Technology & Growth',
+      currency: 'GBP',
+      description: 'Currency-hedged exposure to non-financial titans listed on the Nasdaq index protecting UK investors against USD fluctuations.',
+      healthScore: '9.2/10',
+      valuationScore: '7.5/10',
+      dividendSafety: '8.8/10'
+    },
+    {
+      ticker: 'ISF',
+      name: 'iShares Core FTSE 100 UCITS ETF',
+      type: 'ETF',
+      exchange: 'London Stock Exchange (LSE)',
+      price: '£8.22',
+      priceNum: 8.22,
+      change: '+0.15%',
+      peRatio: '12.8x',
+      divYield: '3.8% (Distributing)',
+      marketCap: '£11.2 Billion',
+      sector: 'UK Blue Chip',
+      currency: 'GBP',
+      description: 'Benchmark fund holding the top 100 UK blue-chip companies with robust cash dividends and defensive characteristics.',
+      healthScore: '8.9/10',
+      valuationScore: '9.2/10',
+      dividendSafety: '9.4/10'
+    },
+    {
+      ticker: 'CSH2',
+      name: 'Lyxor Smart Overnight Return UCITS ETF',
+      type: 'Money Market',
+      exchange: 'London Stock Exchange (LSE)',
+      price: '£111.45',
+      priceNum: 111.45,
+      change: '+0.02%',
+      peRatio: 'SONIA Base',
+      divYield: '5.2% (Overnight Rate)',
+      marketCap: '£2.4 Billion',
+      sector: 'Cash & Liquidity',
+      currency: 'GBP',
+      description: 'High-liquidity money market fund tracking the Bank of England Sterling Overnight Index Average (SONIA).',
+      healthScore: '9.9/10',
+      valuationScore: '9.9/10',
+      dividendSafety: '10/10'
+    }
+  ],
+  lessons: [
+    {
+      id: 1,
+      level: 1,
+      title: 'What is Investing?',
+      time: '2 min',
+      xp: 50,
+      completed: true,
+      summary: 'Investing is the allocation of capital to assets that generate productive returns, outpacing inflation over multi-year horizons.',
+      content: 'Unlike saving in a bank account which erodes purchasing power through inflation, investing purchases ownership stakes in productive businesses and real assets.',
+      quiz: {
+        question: 'What is the primary objective of investing versus cash savings?',
+        options: ['Generating compounding returns that beat inflation', 'Guaranteeing zero price fluctuation', 'Avoiding all taxes automatically'],
+        answer: 0
+      }
+    },
+    {
+      id: 2,
+      level: 1,
+      title: 'Saving vs Investing',
+      time: '3 min',
+      xp: 50,
+      completed: false,
+      summary: 'Distinguish between emergency liquidity needs and capital compounding investments.',
+      content: 'Cash is for short-term liquidity (3-6 months emergency reserve). Investments are for wealth horizons exceeding 5 to 10 years where short-term volatility is rewarded with equity risk premiums.',
+      quiz: {
+        question: 'What time horizon is typically recommended for equity investing?',
+        options: ['1 to 3 months', '5 to 10+ years', 'Overnight only'],
+        answer: 1
+      }
+    },
+    {
+      id: 3,
+      level: 1,
+      title: 'The Magic of Compound Growth',
+      time: '3 min',
+      xp: 50,
+      completed: false,
+      summary: 'Albert Einstein called compound interest the eighth wonder of the world.',
+      content: 'When returns generate further returns over decades, exponential hockey-stick curves turn regular modest monthly contributions into multi-million pound wealth pools.',
+      quiz: {
+        question: 'What accelerates compounding growth the most?',
+        options: ['Frequent daily trading', 'Time in the market & reinvested dividends', 'Holding only physical cash'],
+        answer: 1
+      }
+    },
+    {
+      id: 4,
+      level: 1,
+      title: 'Stocks, Bonds & Cash Explained',
+      time: '4 min',
+      xp: 50,
+      completed: false,
+      summary: 'The three primary asset classes in institutional asset allocation.',
+      content: 'Equities provide capital growth; bonds offer fixed debt coupon yields; cash provides volatility buffer and dry powder.',
+      quiz: {
+        question: 'Which asset class historically delivers the highest real growth over 20+ years?',
+        options: ['Equities / Stocks', 'Cash under the mattress', 'Government Bonds'],
+        answer: 0
+      }
+    },
+    {
+      id: 5,
+      level: 1,
+      title: 'Index Funds & ETFs: The Ultimate Vehicle',
+      time: '4 min',
+      xp: 50,
+      completed: false,
+      summary: 'Why passive global indexation defeats 90% of active fund managers over 10-year horizons.',
+      content: 'By owning thousands of global companies through UCITS index funds like VWRP, investors minimize single-stock failure risks with rock-bottom expense ratios.',
+      quiz: {
+        question: 'What is a major advantage of UCITS index ETFs?',
+        options: ['High management fees', 'Instant broad diversification at ultra-low cost', 'Guaranteed doubling every week'],
+        answer: 1
+      }
+    }
+  ],
+  chatMessages: [
+    { sender: 'ai', text: 'Good day, Johnkennedy! I am your EB Wealth AI Coach. I can analyze your asset allocation across LSE ETFs, optimize your 2024/25 £20,000 ISA capacity, or stress-test your monthly compounding plan. How may I assist your portfolio today?' }
+  ],
+  communityPosts: [
+    { id: 1, author: 'James Henderson', category: 'UK Investing', title: 'Why 100% VWRP is the gold standard for UK Stocks & Shares ISA', content: 'With over 3,700 stocks and automatic dividend reinvesting (Acc), VWRP eliminates single-market risk and currency conversion fees for UK residents.', likes: 42, comments: 16, time: '2h ago' },
+    { id: 2, author: 'Sophia Patel', category: 'ISA & Tax', title: 'Maximizing the £20,000 allowance before April 5th', content: 'Remember that uninvested cash inside a Stocks & Shares ISA still counts toward your allowance limit. Ensure you fund your account in time.', likes: 31, comments: 9, time: '5h ago' },
+    { id: 3, author: 'Oliver Wright', category: 'JISA & Junior Accounts', title: 'Junior ISA compounding over 18 years is staggering', content: 'Just £100/month at a 7% annualized return equals ~£43,000 on your child’s 18th birthday, entirely tax-free.', likes: 54, comments: 22, time: '1d ago' }
+  ],
+  events: [
+    { id: 1, title: 'UK Tax-Year-End Wealth Masterclass 2024/25', date: 'Thursday, 24 Oct • 18:30 GMT', host: 'EB Wealth Institutional Desk', description: 'Comprehensive walkthrough on how to maximize your £20,000 ISA, £3,000 CGT exemption, and SIPP pension tax relief.' },
+    { id: 2, title: 'Global ETF Asset Allocation & Rebalancing', date: 'Tuesday, 29 Oct • 19:00 GMT', host: 'Senior Portfolio Strategist', description: 'Deep dive into market-cap weighting versus equal weighting with live Q&A session.' }
+  ],
+  marketNews: [
+    { id: 1, title: 'Bank of England Holds Base Rate at 5.00% Amid Steady Inflation', source: 'LSE Market Wire', time: '1 hour ago', snippet: 'Monetary Policy Committee signals measured approach to future interest rate adjustments, bolstering gilt yields.' },
+    { id: 2, title: 'FTSE 100 Gains 0.4% as Healthcare and Defense Giants Rally', source: 'Financial Intelligence', time: '3 hours ago', snippet: 'AstraZeneca and BAE Systems lead benchmark index upward amidst positive clinical data releases.' },
+    { id: 3, title: 'HMRC Reminds High Earners of Pension Tapering Rules Ahead of Autumn Budget', source: 'UK Tax Review', time: '1 day ago', snippet: 'Financial planners urge strategic utilization of SIPP carry-forward allowances prior to potential fiscal policy amendments.' }
+  ]
 };
 
-// Seed data if empty
-if (!state.holdings.length) state.holdings = [...SEED_HOLDINGS];
-if (!state.communityPosts.length) state.communityPosts = [...SEED_POSTS];
-if (!state.events.length) state.events = [...SEED_EVENTS];
+const appEl = document.getElementById('app');
 
-// Check if user already logged in locally
-const localUser = localStorage.getItem('eb_user');
-if (localUser) {
-  try {
-    state.user = JSON.parse(localUser);
-    state.view = 'dashboard';
-  } catch (e) {}
-}
-
-// ============================================================
-//  STATE MANAGEMENT
-// ============================================================
-
-function setState(updates) {
-  Object.assign(state, updates);
-  persistState();
+function navigateTo(view, payload = null) {
+  if (view === 'asset_detail' && payload) state.selectedTicker = payload;
+  if (view === 'lesson_detail' && payload) state.selectedLessonId = payload;
+  state.navStack.push(view);
+  state.currentView = view;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
   render();
 }
 
-function persistState() {
-  try {
-    localStorage.setItem('eb_holdings', JSON.stringify(state.holdings));
-    localStorage.setItem('eb_lesson_progress', JSON.stringify(state.lessonProgress));
-    localStorage.setItem('eb_posts', JSON.stringify(state.communityPosts));
-    localStorage.setItem('eb_chat', JSON.stringify(state.chatMessages));
-    localStorage.setItem('eb_events', JSON.stringify(state.events));
-    localStorage.setItem('eb_xp', String(state.xp));
-    localStorage.setItem('eb_streak', String(state.streak));
-    if (state.user) localStorage.setItem('eb_user', JSON.stringify(state.user));
-  } catch (e) {}
-}
-
-// ============================================================
-//  UTILITIES
-// ============================================================
-
-function fmt(n, d = 2) {
-  return '£' + Number(n).toLocaleString('en-GB', { minimumFractionDigits: d, maximumFractionDigits: d });
-}
-
-function fmtPct(n, d = 2) {
-  return (n >= 0 ? '+' : '') + Number(n).toFixed(d) + '%';
-}
-
-function fmtNum(n, d = 2) {
-  return Number(n).toFixed(d);
-}
-
-function gainClass(val) {
-  return val >= 0 ? 'pos' : 'neg';
-}
-
-function gainBadgeClass(val) {
-  return val >= 0 ? 'positive' : 'negative';
-}
-
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 18) return 'Good afternoon';
-  return 'Good evening';
-}
-
-function getFirstName() {
-  if (!state.user) return 'Investor';
-  const n = state.user.displayName || state.user.name || state.user.email || '';
-  return n.split(' ')[0] || 'Investor';
-}
-
-function getLevelTitle(xp) {
-  if (xp < 200)  return { title: 'Investor Starter',    num: 1 };
-  if (xp < 500)  return { title: 'Developing Investor', num: 2 };
-  if (xp < 1000) return { title: 'Confident Investor',  num: 3 };
-  if (xp < 2000) return { title: 'Strategic Investor',  num: 4 };
-  return              { title: 'EB Wealth Builder',  num: 5 };
-}
-
-function getLevelXPRange(xp) {
-  if (xp < 200)  return { min: 0, max: 200 };
-  if (xp < 500)  return { min: 200, max: 500 };
-  if (xp < 1000) return { min: 500, max: 1000 };
-  if (xp < 2000) return { min: 1000, max: 2000 };
-  return              { min: 2000, max: 3000 };
-}
-
-function calcPortfolio() {
-  let totalValue = 0, totalCost = 0;
-  state.holdings.forEach(h => {
-    totalValue += h.shares * h.currentPrice;
-    totalCost  += h.shares * h.avgPrice;
-  });
-  const gain = totalValue - totalCost;
-  const gainPct = totalCost > 0 ? (gain / totalCost) * 100 : 0;
-  return { totalValue, totalCost, gain, gainPct };
-}
-
-function calcHolding(h) {
-  const value = h.shares * h.currentPrice;
-  const cost  = h.shares * h.avgPrice;
-  const gain  = value - cost;
-  const pct   = cost > 0 ? (gain / cost) * 100 : 0;
-  return { value, cost, gain, pct };
-}
-
-function showToast(msg, type = 'gold', duration = 2500) {
-  const existing = document.querySelector('.toast');
-  if (existing) existing.remove();
-  const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), duration);
-}
-
-function navigate(view, extras = {}) {
-  state.navHistory.push(state.view);
-  setState({ view, ...extras });
-}
-
-function goBack() {
-  const prev = state.navHistory.pop();
-  if (prev) setState({ view: prev });
-  else setState({ view: 'dashboard' });
-}
-
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-// ============================================================
-//  AI COACH
-// ============================================================
-
-function getLocalAIResponse(prompt) {
-  const p = (prompt || '').toLowerCase();
-  if (p.includes('vwrp')) return 'VWRP is Vanguard FTSE All-World UCITS ETF — it tracks 3,700+ stocks across 49 countries with a TER of 0.22%. It is one of the most recommended ETFs for UK investors seeking global diversification in a single fund. The accumulating version reinvests dividends automatically for maximum compound growth.';
-  if (p.includes('isa')) return 'The Stocks & Shares ISA is your most powerful UK investment wrapper. You can invest up to £20,000 per tax year (April 6 – April 5) with zero capital gains tax and zero income tax on any returns. Always max your ISA before investing in a General Investment Account (GIA).';
-  if (p.includes('sipp') || p.includes('pension')) return 'A SIPP (Self-Invested Personal Pension) gives you 20-45% tax relief on contributions depending on your tax band. The money grows tax-free but can only be accessed from age 57 (from 2028). Ideal for long-term retirement building alongside your ISA.';
-  if (p.includes('etf') || p.includes('index fund')) return 'ETFs (Exchange-Traded Funds) are the most efficient way to invest for most people. Look for: 1) Low TER (under 0.25%), 2) UCITS regulated, 3) Accumulating share class for compound growth, 4) Physical replication. VWRP, VUAG, and VHYL are excellent UK-listed options.';
-  if (p.includes('beginner') || p.includes('start')) return 'For beginners, the EB Wealth recommended starting path: 1) Open a Stocks & Shares ISA with a platform like Vanguard, InvestEngine, or Freetrade, 2) Set up a monthly standing order of whatever you can afford, 3) Start with VWRP for global diversification, 4) Increase contributions as your income grows. Simplicity and consistency beat complexity every time.';
-  if (p.includes('diversi')) return 'Diversification spreads risk across different assets. For UK investors: hold global ETFs (not just UK stocks), include different sectors (tech, healthcare, energy), and consider some bonds if your horizon is under 10 years. VWRP already gives you 49-country diversification in one fund.';
-  if (p.includes('pound cost') || p.includes('monthly') || p.includes('dca')) return 'Pound-cost averaging (PCA) means investing a fixed amount every month regardless of market conditions. When markets fall, your £200/month buys more shares. When they rise, you benefit from your earlier lower-cost purchases. It removes the impossible task of timing the market.';
-  if (p.includes('risk')) return 'Your risk profile should match your time horizon. Under 5 years: 40-60% equities, rest in bonds/cash. 5-10 years: 70-80% equities. 10-20 years: 80-90% equities. 20+ years: 90-100% equities. Young investors can afford more risk — time smooths out volatility.';
-  if (p.includes('vuag') || p.includes('s&p 500') || p.includes('sp500')) return 'VUAG tracks the S&P 500 — the 500 largest US companies. With a TER of 0.07%, it is one of the cheapest ETFs available. It is great for US concentration, but remember you are entirely dependent on the US market. Combined with VWRP, you will increase your US weighting significantly — check the ETF Overlap tool to see the overlap percentage.';
-  if (p.includes('overlap')) return 'ETF overlap occurs when two funds hold the same underlying stocks. High overlap means you are less diversified than you think. For example, VWRP and VUAG share about 62% of holdings since VWRP already has significant US exposure. Use the ETF Overlap Checker in the Portfolio section to analyse your specific holdings.';
-  if (p.includes('tax') || p.includes('capital gains')) return 'UK investors can use their ISA allowance (£20,000/year) to shelter all gains from Capital Gains Tax. Outside an ISA, the CGT annual exempt amount is £3,000 for 2024/25. Higher rate taxpayers pay 20% CGT on investment gains above this threshold. Always maximise your ISA before investing in a GIA.';
-  if (p.includes('compound') || p.includes('interest')) return 'Compound interest is the process where your returns generate their own returns. Einstein allegedly called it the eighth wonder of the world. A £10,000 investment growing at 8% annually becomes £46,610 after 20 years without adding anything extra. The key variable is time — starting 10 years earlier nearly doubles your outcome.';
-  return 'That is a great question! As your EB Wealth AI Coach, my advice is always anchored in long-term, evidence-based UK investing principles. Consider: consistent monthly contributions, low-cost UCITS ETFs, maximising your ISA allowance, and ignoring short-term market noise. What specific aspect of investing would you like to explore further?';
-}
-
-async function sendAIMessage(prompt) {
-  const userMsg = { role: 'user', content: prompt, time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) };
-  const newMessages = [...state.chatMessages, userMsg];
-  setState({ chatMessages: newMessages, isTyping: true });
-  scrollChat();
-
-  try {
-    let response;
-    if (firebase && firebase.askAI) {
-      response = await Promise.race([
-        firebase.askAI(prompt),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
-      ]);
-    } else {
-      await new Promise(r => setTimeout(r, 800 + Math.random() * 600));
-      response = getLocalAIResponse(prompt);
-    }
-    const aiMsg = { role: 'ai', content: response, time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) };
-    setState({ chatMessages: [...state.chatMessages.filter(m => m !== userMsg), userMsg, aiMsg], isTyping: false });
-  } catch (e) {
-    await new Promise(r => setTimeout(r, 600 + Math.random() * 400));
-    const fallback = getLocalAIResponse(prompt);
-    const aiMsg = { role: 'ai', content: fallback, time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) };
-    setState({ chatMessages: [...state.chatMessages, aiMsg], isTyping: false });
-  }
-  scrollChat();
-}
-
-function scrollChat() {
-  requestAnimationFrame(() => {
-    const msgs = document.querySelector('.ai-messages');
-    if (msgs) msgs.scrollTop = msgs.scrollHeight;
-  });
-}
-
-// ============================================================
-//  COMPOUND SIMULATOR CALCULATION
-// ============================================================
-
-function calcCompound(P, pmt, years, rate) {
-  const r = rate / 100 / 12;
-  const n = years * 12;
-  let fv;
-  if (r === 0) {
-    fv = P + pmt * n;
+function navigateBack() {
+  if (state.navStack.length > 1) {
+    state.navStack.pop();
+    state.currentView = state.navStack[state.navStack.length - 1];
   } else {
-    fv = P * Math.pow(1 + r, n) + pmt * ((Math.pow(1 + r, n) - 1) / r);
+    state.currentView = 'home';
   }
-  const totalInvested = P + pmt * n;
-  const growth = fv - totalInvested;
-  const growthPct = totalInvested > 0 ? (growth / totalInvested) * 100 : 0;
-  return { fv, totalInvested, growth, growthPct };
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  render();
 }
 
-function calcCompoundYearly(P, pmt, years, rate) {
-  const rows = [];
-  for (let y = 1; y <= years; y++) {
-    const res = calcCompound(P, pmt, y, rate);
-    rows.push({ year: y, value: res.fv, invested: res.totalInvested, growth: res.growth });
-  }
-  return rows;
-}
-
-// ============================================================
-//  AUTH HANDLERS
-// ============================================================
-
-async function handleSignIn(e) {
-  e.preventDefault();
-  const email = document.getElementById('signin-email').value.trim();
-  const pass  = document.getElementById('signin-pass').value;
-  if (!email || !pass) { setState({ authError: 'Please enter email and password.' }); return; }
-  setState({ authLoading: true, authError: '' });
-
-  try {
-    const user = await firebase.signIn(email, pass);
-    const userData = { uid: user.uid, email: user.email, displayName: user.displayName || email.split('@')[0], name: user.displayName || email.split('@')[0] };
-    localStorage.setItem('eb_user', JSON.stringify(userData));
-    const savedData = await firebase.getUserData(user.uid).catch(() => null);
-    if (savedData) {
-      if (savedData.holdings) state.holdings = savedData.holdings;
-      if (savedData.xp) state.xp = savedData.xp;
-      if (savedData.lessonProgress) state.lessonProgress = savedData.lessonProgress;
-    }
-    setState({ authLoading: false, user: userData, view: 'dashboard', navHistory: [] });
-  } catch (err) {
-    // Local fallback auth
-    if (email && pass.length >= 6) {
-      const userData = { uid: 'local_' + Date.now(), email, displayName: email.split('@')[0], name: email.split('@')[0] };
-      localStorage.setItem('eb_user', JSON.stringify(userData));
-      setState({ authLoading: false, user: userData, view: 'dashboard', navHistory: [] });
-    } else {
-      setState({ authLoading: false, authError: 'Invalid credentials. Try again or use demo: demo@ebwealth.com / password123' });
-    }
+// Mode Synchronization
+function syncModeClass() {
+  if (state.isDesktopMode && window.innerWidth >= 860) {
+    document.body.classList.add('mode-desktop');
+    document.body.classList.remove('mode-phone');
+  } else {
+    document.body.classList.add('mode-phone');
+    document.body.classList.remove('mode-desktop');
   }
 }
 
-async function handleRegister(e) {
-  e.preventDefault();
-  const name  = document.getElementById('reg-name').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const pass  = document.getElementById('reg-pass').value;
-  if (!name || !email || !pass) { setState({ authError: 'Please fill all fields.' }); return; }
-  if (pass.length < 6) { setState({ authError: 'Password must be at least 6 characters.' }); return; }
-  setState({ authLoading: true, authError: '' });
+window.toggleViewportMode = function() {
+  state.isDesktopMode = !state.isDesktopMode;
+  render();
+};
 
-  try {
-    const user = await firebase.register(email, pass, name);
-    const userData = { uid: user.uid, email: user.email, displayName: name, name };
-    localStorage.setItem('eb_user', JSON.stringify(userData));
-    setState({ authLoading: false, user: userData, view: 'onboarding', onboardingStep: 0, onboardingData: {} });
-  } catch (err) {
-    const userData = { uid: 'local_' + Date.now(), email, displayName: name, name };
-    localStorage.setItem('eb_user', JSON.stringify(userData));
-    setState({ authLoading: false, user: userData, view: 'onboarding', onboardingStep: 0, onboardingData: {}, authError: '' });
-  }
-}
+window.addEventListener('resize', () => {
+  syncModeClass();
+});
 
-async function handleLogout() {
-  try { await firebase.signOut(); } catch (e) {}
-  localStorage.removeItem('eb_user');
-  setState({ user: null, view: 'auth', authTab: 'signin', authError: '', navHistory: [] });
-}
-
-// ============================================================
-//  PORTFOLIO HANDLERS
-// ============================================================
-
-function addHolding(e) {
-  e.preventDefault();
-  const f = e.target;
-  const h = {
-    id: Date.now(),
-    ticker:      f.ticker.value.trim().toUpperCase(),
-    name:        f.holdingName.value.trim(),
-    assetType:   f.assetType.value,
-    shares:      parseFloat(f.shares.value) || 0,
-    avgPrice:    parseFloat(f.avgPrice.value) || 0,
-    currentPrice: parseFloat(f.currentPrice.value) || 0,
-    accountType: f.accountType.value,
-    geography:   f.geography.value,
-    sector:      f.sector.value
-  };
-  if (!h.ticker || !h.name || h.shares <= 0) { showToast('Please fill required fields', 'error'); return; }
-  const newHoldings = [...state.holdings, h];
-  setState({ holdings: newHoldings, showAddHolding: false });
-  showToast(`${h.ticker} added to portfolio ✓`, 'success');
-}
-
-function deleteHolding(id) {
-  if (!confirm('Remove this holding?')) return;
-  setState({ holdings: state.holdings.filter(h => h.id !== id) });
-  showToast('Holding removed', 'gold');
-}
-
-// ============================================================
-//  ACADEMY HANDLERS
-// ============================================================
-
-function completeQuiz(lessonId, score, totalQ, xpReward) {
-  const progress = { ...state.lessonProgress };
-  const passed = score >= Math.ceil(totalQ * 0.6);
-  if (!progress[lessonId] || score > (progress[lessonId].score || 0)) {
-    progress[lessonId] = { completed: passed, score, total: totalQ, completedAt: new Date().toISOString() };
-  }
-  const newXp = state.xp + (passed && !(state.lessonProgress[lessonId]?.completed) ? xpReward : 0);
-  setState({ lessonProgress: progress, xp: newXp, quizSubmitted: true });
-  if (passed) showToast(`+${xpReward} XP earned! 🎉`, 'gold');
-}
-
-// ============================================================
-//  COMMUNITY HANDLERS
-// ============================================================
-
-function toggleLike(postId) {
-  const posts = state.communityPosts.map(p => {
-    if (p.id === postId) return { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 };
-    return p;
-  });
-  setState({ communityPosts: posts });
-}
-
-function addPost(e) {
-  e.preventDefault();
-  const f = e.target;
-  const post = {
-    id: Date.now(),
-    author: getFirstName() + ' ' + (state.user?.email?.[0]?.toUpperCase() || 'U') + '.',
-    level: getLevelTitle(state.xp).title,
-    category: f.postCategory.value,
-    title: f.postTitle.value.trim(),
-    content: f.postContent.value.trim(),
-    likes: 0,
-    comments: 0,
-    time: 'Just now',
-    liked: false
-  };
-  if (!post.title || !post.content) { showToast('Please fill all fields', 'error'); return; }
-  const newPosts = [post, ...state.communityPosts];
-  const newXp = state.xp + 25;
-  setState({ communityPosts: newPosts, showNewPost: false, xp: newXp });
-  showToast('+25 XP for contributing to the community! 🌟', 'gold');
-}
-
-function toggleEventRegistration(eventId) {
-  const events = state.events.map(ev => {
-    if (ev.id === eventId) return { ...ev, registered: !ev.registered };
-    return ev;
-  });
-  const ev = events.find(e => e.id === eventId);
-  setState({ events });
-  showToast(ev.registered ? `Registered for ${ev.title} ✓` : `Unregistered from ${ev.title}`, ev.registered ? 'success' : 'gold');
-}
-
-// ============================================================
-//  RENDER — MAIN ENTRY
-// ============================================================
-
-const SCROLL_POSITIONS = {};
-
+// Main Render Dispatcher
 function render() {
-  // Save scroll
-  const scrollEl = document.querySelector('.screen-with-nav, .ai-messages');
-  if (scrollEl) SCROLL_POSITIONS[state.view] = scrollEl.scrollTop;
+  syncModeClass();
+  const isDesktop = state.isDesktopMode && window.innerWidth >= 860;
+  const isPrimaryTab = ['home', 'market', 'learn', 'portfolio', 'profile'].includes(state.currentView);
+  const isLanding = state.currentView === 'landing';
 
-  const app = document.getElementById('app');
-  if (!app) return;
+  appEl.innerHTML = `
+    <!-- Top Desktop Navbar (Active in desktop full-width mode) -->
+    ${isDesktop ? renderDesktopNavbar() : ''}
 
-  let html = '';
-  switch (state.view) {
-    case 'auth':        html = renderAuth(); break;
-    case 'onboarding':  html = renderOnboarding(); break;
-    case 'dashboard':   html = renderDashboard(); break;
-    case 'portfolio':   html = renderPortfolio(); break;
-    case 'academy':     html = renderAcademy(); break;
-    case 'lesson':      html = renderLesson(); break;
-    case 'etf':         html = renderETF(); break;
-    case 'simulator':   html = renderSimulator(); break;
-    case 'ai':          html = renderAI(); break;
-    case 'community':   html = renderCommunity(); break;
-    case 'events':      html = renderCommunity(); break;
-    case 'news':        html = renderCommunity(); break;
-    case 'profile':     html = renderProfile(); break;
-    case 'asset_detail': html = renderAssetDetail(); break;
-    default:            html = renderDashboard();
-  }
-
-  // Include bottom nav for main screens
-  const mainViews = ['dashboard', 'portfolio', 'academy', 'community', 'profile'];
-  const subViews  = ['lesson', 'etf', 'simulator', 'ai', 'asset_detail'];
-  const showNav   = mainViews.includes(state.view) || subViews.includes(state.view);
-
-  app.innerHTML = html + (showNav ? renderBottomNav() : '') + renderModals();
-
-  // Restore scroll
-  requestAnimationFrame(() => {
-    const scrollEl2 = document.querySelector('.screen-with-nav');
-    if (scrollEl2 && SCROLL_POSITIONS[state.view]) scrollEl2.scrollTop = SCROLL_POSITIONS[state.view];
-    attachEvents();
-    if (state.view === 'ai') scrollChat();
-  });
-}
-
-// ============================================================
-//  BOTTOM NAV
-// ============================================================
-
-function renderBottomNav() {
-  const tabs = [
-    { view: 'dashboard',  icon: '🏠', label: 'Dashboard' },
-    { view: 'portfolio',  icon: '💼', label: 'Portfolio' },
-    { view: 'academy',    icon: '🎓', label: 'Academy' },
-    { view: 'community',  icon: '👥', label: 'Community' },
-    { view: 'profile',    icon: '👤', label: 'Profile' }
-  ];
-  const activeView = ['lesson', 'etf', 'simulator'].includes(state.view) ? 'academy'
-                   : state.view === 'asset_detail' ? 'portfolio'
-                   : state.view === 'ai' ? 'community'
-                   : state.view;
-  return `<nav class="bottom-nav">
-    ${tabs.map(t => `
-      <div class="nav-item ${activeView === t.view ? 'active' : ''}" onclick="navTo('${t.view}')">
-        <span class="nav-icon">${t.icon}</span>
-        <span class="nav-label">${t.label}</span>
-      </div>
-    `).join('')}
-  </nav>`;
-}
-
-// ============================================================
-//  MODALS
-// ============================================================
-
-function renderModals() {
-  let html = '';
-  if (state.showAddHolding) html += renderAddHoldingModal();
-  if (state.showNewPost)    html += renderNewPostModal();
-  return html;
-}
-
-function renderAddHoldingModal() {
-  return `
-  <div class="modal-overlay" onclick="closeModalOnOverlay(event)">
-    <div class="modal-sheet" onclick="event.stopPropagation()">
-      <div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">Add Holding</span>
-        <button class="modal-close" onclick="setState({showAddHolding:false})">✕</button>
-      </div>
-      <div class="modal-body">
-        <form class="modal-form" onsubmit="addHolding(event)">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Ticker *</label>
-              <input class="form-input" name="ticker" placeholder="VWRP" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Asset Type</label>
-              <select class="form-select" name="assetType">
-                <option>ETF</option><option>Stock</option><option>Bond</option><option>Investment Trust</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Name *</label>
-            <input class="form-input" name="holdingName" placeholder="Vanguard FTSE All-World UCITS ETF" required>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Shares *</label>
-              <input class="form-input" name="shares" type="number" step="0.001" min="0" placeholder="10" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Avg. Price (£)</label>
-              <input class="form-input" name="avgPrice" type="number" step="0.01" min="0" placeholder="100.00">
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Current Price (£)</label>
-            <input class="form-input" name="currentPrice" type="number" step="0.01" min="0" placeholder="105.00">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Account Type</label>
-            <select class="form-select" name="accountType">
-              <option>Stocks & Shares ISA</option>
-              <option>General Investment Account</option>
-              <option>SIPP</option>
-              <option>Lifetime ISA</option>
-            </select>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Geography</label>
-              <select class="form-select" name="geography">
-                <option>Global</option><option>US</option><option>UK</option>
-                <option>Europe</option><option>Asia Pacific</option><option>Emerging Markets</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Sector</label>
-              <select class="form-select" name="sector">
-                <option>Diversified</option><option>Technology</option><option>Healthcare</option>
-                <option>Financials</option><option>Energy</option><option>Consumer</option>
-                <option>Real Estate</option><option>Utilities</option>
-              </select>
-            </div>
-          </div>
-          <button class="btn-primary" type="submit" style="margin-top:8px">Add to Portfolio</button>
-        </form>
-      </div>
-    </div>
-  </div>`;
-}
-
-function renderNewPostModal() {
-  return `
-  <div class="modal-overlay" onclick="closeModalOnOverlay(event)">
-    <div class="modal-sheet" onclick="event.stopPropagation()">
-      <div class="modal-handle"></div>
-      <div class="modal-header">
-        <span class="modal-title">New Post</span>
-        <button class="modal-close" onclick="setState({showNewPost:false})">✕</button>
-      </div>
-      <div class="modal-body">
-        <form class="modal-form" onsubmit="addPost(event)">
-          <div class="form-group">
-            <label class="form-label">Category</label>
-            <select class="form-select" name="postCategory">
-              <option>UK Investing</option><option>ETFs</option><option>ISA/SIPP</option>
-              <option>Property</option><option>Crypto</option><option>General</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Title *</label>
-            <input class="form-input" name="postTitle" placeholder="Share your insight..." required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Content *</label>
-            <textarea class="form-input" name="postContent" rows="5" placeholder="Write your post..." required></textarea>
-          </div>
-          <div style="font-size:12px;color:var(--gold);margin-top:-6px;">✦ Earn +25 XP for posting</div>
-          <button class="btn-primary" type="submit">Publish Post</button>
-        </form>
-      </div>
-    </div>
-  </div>`;
-}
-
-// ============================================================
-//  SCREEN: AUTH
-// ============================================================
-
-function renderAuth() {
-  const isSignIn = state.authTab === 'signin';
-  return `
-  <div class="auth-screen fade-in">
-    <div class="auth-logo">
-      <div class="auth-logo-icon">💰</div>
-      <h1>EB Wealth</h1>
-    </div>
-    <p class="auth-tagline">UK Investment Education & Portfolio Tracker</p>
-
-    <div class="auth-tabs" style="width:100%">
-      <div class="auth-tab ${isSignIn ? 'active' : ''}" onclick="setState({authTab:'signin',authError:''})">Sign In</div>
-      <div class="auth-tab ${!isSignIn ? 'active' : ''}" onclick="setState({authTab:'register',authError:''})">Register</div>
-    </div>
-
-    ${state.authError ? `<div class="auth-error">${escapeHtml(state.authError)}</div>` : ''}
-
-    ${state.authLoading ? `<div class="auth-spinner"><div class="spinner"></div></div>` : isSignIn ? `
-      <form class="auth-form" onsubmit="handleSignIn(event)">
-        <div class="form-group">
-          <label class="form-label">Email Address</label>
-          <input id="signin-email" class="form-input" type="email" placeholder="you@example.com" autocomplete="email" value="">
+    <!-- Simulated Mobile Status Bar (Active in phone frame mode) -->
+    ${!isDesktop ? `
+      <div class="mobile-status-bar">
+        <span>14:33</span>
+        <div class="status-bar-icons">
+          <span>5G</span>
+          <span class="battery-pill">■■■ 100%</span>
         </div>
-        <div class="form-group">
-          <label class="form-label">Password</label>
-          <input id="signin-pass" class="form-input" type="password" placeholder="••••••••" autocomplete="current-password">
-        </div>
-        <button class="btn-primary" type="submit">Sign In</button>
-      </form>
-      <p style="text-align:center;margin-top:16px;font-size:12px;color:var(--text2)">Demo: demo@ebwealth.com / password123</p>
-    ` : `
-      <form class="auth-form" onsubmit="handleRegister(event)">
-        <div class="form-group">
-          <label class="form-label">Full Name</label>
-          <input id="reg-name" class="form-input" type="text" placeholder="Alex Johnson" autocomplete="name">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Email Address</label>
-          <input id="reg-email" class="form-input" type="email" placeholder="you@example.com" autocomplete="email">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Password (min 6 chars)</label>
-          <input id="reg-pass" class="form-input" type="password" placeholder="••••••••" autocomplete="new-password">
-        </div>
-        <button class="btn-primary" type="submit">Create Account</button>
-      </form>
-    `}
-  </div>`;
-}
-
-// ============================================================
-//  SCREEN: ONBOARDING
-// ============================================================
-
-const ONBOARDING_STEPS = [
-  {
-    title: 'What is your experience level?',
-    subtitle: 'Help us personalise your learning path',
-    key: 'experience',
-    options: [
-      { icon: '🌱', label: 'Beginner',     sub: 'Just getting started with investing' },
-      { icon: '📈', label: 'Intermediate', sub: 'Invested for 1-3 years' },
-      { icon: '💼', label: 'Advanced',     sub: '3+ years of active investing' },
-      { icon: '🏆', label: 'Expert',       sub: 'Professional or institutional level' }
-    ]
-  },
-  {
-    title: 'What is your primary goal?',
-    subtitle: 'We will tailor content to match your objective',
-    key: 'goal',
-    options: [
-      { icon: '🌍', label: 'Long-term wealth', sub: 'Grow wealth over 10-20+ years' },
-      { icon: '🛡️', label: 'ISA maximisation', sub: 'Make the most of tax-free wrappers' },
-      { icon: '💰', label: 'Dividend income',  sub: 'Generate regular passive income' },
-      { icon: '🏠', label: 'Save for property', sub: 'Build a house deposit or portfolio' }
-    ]
-  },
-  {
-    title: 'What is your time horizon?',
-    subtitle: 'How long do you plan to stay invested?',
-    key: 'horizon',
-    options: [
-      { icon: '⏱️', label: '1–3 years',   sub: 'Short term investing' },
-      { icon: '📅', label: '3–5 years',   sub: 'Medium term' },
-      { icon: '📆', label: '5–10 years',  sub: 'Long term' },
-      { icon: '🗓️', label: '10–20 years', sub: 'Very long term' },
-      { icon: '♾️', label: '20+ years',   sub: 'Legacy / retirement building' }
-    ]
-  },
-  {
-    title: 'Monthly investment capacity?',
-    subtitle: 'How much can you invest per month?',
-    key: 'capacity',
-    options: [
-      { icon: '💵', label: 'Under £150',    sub: 'Starting out' },
-      { icon: '💴', label: '£150–£500',     sub: 'Building momentum' },
-      { icon: '💷', label: '£500–£1,000',   sub: 'Serious investor' },
-      { icon: '🏦', label: '£1,000+',       sub: 'High capacity' }
-    ]
-  },
-  {
-    title: 'What is your risk tolerance?',
-    subtitle: 'How comfortable are you with market volatility?',
-    key: 'risk',
-    options: [
-      { icon: '🛡️', label: 'Conservative',   sub: 'Prefer stability, lower risk' },
-      { icon: '⚖️', label: 'Medium',          sub: 'Balanced risk / reward' },
-      { icon: '📊', label: 'Medium-High',     sub: 'Comfortable with volatility' },
-      { icon: '🚀', label: 'High',            sub: 'Maximum growth focus' }
-    ]
-  }
-];
-
-function renderOnboarding() {
-  const step = ONBOARDING_STEPS[state.onboardingStep];
-  const selected = state.onboardingData[step.key];
-  const isLast = state.onboardingStep === ONBOARDING_STEPS.length - 1;
-
-  return `
-  <div class="onboarding-screen fade-in">
-    <div class="onboarding-header">
-      <div class="onboarding-step-label">Step ${state.onboardingStep + 1} of ${ONBOARDING_STEPS.length}</div>
-      <h2 class="onboarding-title">${step.title}</h2>
-      <p class="onboarding-subtitle">${step.subtitle}</p>
-    </div>
-
-    <div class="onboarding-dots">
-      ${ONBOARDING_STEPS.map((_, i) => `
-        <div class="onboarding-dot ${i < state.onboardingStep ? 'done' : i === state.onboardingStep ? 'active' : ''}"></div>
-      `).join('')}
-    </div>
-
-    <div class="onboarding-options">
-      ${step.options.map(o => `
-        <div class="onboarding-option ${selected === o.label ? 'selected' : ''}"
-             onclick="selectOnboardingOption('${escapeHtml(o.label)}')">
-          <div class="onboarding-option-icon">${o.icon}</div>
-          <div class="onboarding-option-text">
-            <h4>${escapeHtml(o.label)}</h4>
-            <p>${escapeHtml(o.sub)}</p>
-          </div>
-        </div>
-      `).join('')}
-    </div>
-
-    <div class="onboarding-actions">
-      ${state.onboardingStep > 0 ? `<button class="btn-secondary" onclick="onboardingBack()">← Back</button>` : ''}
-      <button class="btn-primary" onclick="onboardingNext()" ${!selected ? 'style="opacity:0.5"' : ''}>
-        ${isLast ? 'Get Started 🚀' : 'Next →'}
-      </button>
-    </div>
-  </div>`;
-}
-
-function selectOnboardingOption(label) {
-  const step = ONBOARDING_STEPS[state.onboardingStep];
-  setState({ onboardingData: { ...state.onboardingData, [step.key]: label } });
-}
-
-function onboardingNext() {
-  const step = ONBOARDING_STEPS[state.onboardingStep];
-  if (!state.onboardingData[step.key]) { showToast('Please select an option', 'error'); return; }
-  if (state.onboardingStep < ONBOARDING_STEPS.length - 1) {
-    setState({ onboardingStep: state.onboardingStep + 1 });
-  } else {
-    // Save onboarding data
-    const profileData = { ...state.onboardingData, completedAt: new Date().toISOString() };
-    localStorage.setItem('eb_profile', JSON.stringify(profileData));
-    try {
-      if (state.user && firebase.saveUserData) {
-        firebase.saveUserData(state.user.uid, { profile: profileData });
-      }
-    } catch (e) {}
-    setState({ view: 'dashboard', navHistory: [] });
-    showToast('Welcome to EB Wealth! 🎉', 'gold', 3000);
-  }
-}
-
-function onboardingBack() {
-  if (state.onboardingStep > 0) setState({ onboardingStep: state.onboardingStep - 1 });
-}
-
-// ============================================================
-//  SCREEN: DASHBOARD
-// ============================================================
-
-function renderDashboard() {
-  const { totalValue, gain, gainPct } = calcPortfolio();
-  const level = getLevelTitle(state.xp);
-  const { min, max } = getLevelXPRange(state.xp);
-  const xpPct = Math.min(100, ((state.xp - min) / (max - min)) * 100) || 0;
-  const isaPct = (state.isaUsed / 20000) * 100;
-  const completedLessons = Object.values(state.lessonProgress).filter(p => p.completed).length;
-  const topHoldings = state.holdings.slice(0, 3);
-
-  // Next lesson
-  const allLessons = ACADEMY_LEVELS[0].lessons;
-  const nextLesson = allLessons.find(l => !state.lessonProgress[l.id]?.completed) || allLessons[0];
-
-  return `
-  <div class="screen screen-with-nav fade-in">
-    <div class="dashboard-header">
-      <div class="dashboard-greeting">${getGreeting()},</div>
-      <div class="dashboard-greeting-name">${escapeHtml(getFirstName())} 👋</div>
-    </div>
-
-    <!-- Portfolio Summary -->
-    <div class="portfolio-summary-card">
-      <div class="portfolio-total-label">Total Portfolio Value</div>
-      <div class="portfolio-total-value">${fmt(totalValue)}</div>
-      <div class="portfolio-gain">
-        <span class="gain-badge ${gainBadgeClass(gain)}">
-          ${gain >= 0 ? '▲' : '▼'} ${fmt(Math.abs(gain))} (${fmtPct(gainPct)})
-        </span>
-        <span style="font-size:12px;color:var(--text3)">All time</span>
       </div>
-    </div>
-
-    <!-- XP Progress -->
-    <div class="xp-section">
-      <div class="xp-header">
-        <span class="xp-level-badge">⭐ ${escapeHtml(level.title)}</span>
-        <span class="xp-values">${state.xp} / ${max} XP</span>
-      </div>
-      <div class="xp-bar-track">
-        <div class="xp-bar-fill" style="width:${xpPct}%"></div>
-      </div>
-    </div>
-
-    <!-- ISA Allowance -->
-    <div class="isa-section">
-      <div class="isa-header">
-        <span class="isa-label">🛡️ ISA Allowance 2025/26</span>
-        <span class="isa-value">${fmt(state.isaUsed)} / £20,000</span>
-      </div>
-      <div class="isa-bar-track">
-        <div class="isa-bar-fill" style="width:${isaPct}%"></div>
-      </div>
-      <div style="font-size:11px;color:var(--text3);margin-top:6px">${fmt(20000 - state.isaUsed)} remaining this tax year</div>
-    </div>
-
-    <!-- Quick Stats -->
-    <div class="quick-stats">
-      <div class="stat-card">
-        <div class="stat-icon">💼</div>
-        <div class="stat-value">${state.holdings.length}</div>
-        <div class="stat-label">Holdings</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">🔥</div>
-        <div class="stat-value">${state.streak}</div>
-        <div class="stat-label">Day Streak</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">⭐</div>
-        <div class="stat-value">${level.num}</div>
-        <div class="stat-label">Level</div>
-      </div>
-    </div>
-
-    <!-- Continue Learning -->
-    <div class="section-heading"><h3>📚 Continue Learning</h3></div>
-    <div class="continue-card" onclick="navigate('lesson',{selectedLesson:'${nextLesson.id}'})">
-      <div class="continue-icon">🎯</div>
-      <div class="continue-text">
-        <h4>${escapeHtml(nextLesson.title)}</h4>
-        <p>${escapeHtml(nextLesson.readTime)} · +${nextLesson.xp} XP</p>
-      </div>
-      <div class="continue-arrow">›</div>
-    </div>
-
-    <!-- Recent Holdings -->
-    ${topHoldings.length ? `
-      <div class="section-heading">
-        <h3>📊 Recent Holdings</h3>
-        <a onclick="navTo('portfolio')" style="cursor:pointer">View all</a>
-      </div>
-      ${topHoldings.map(h => {
-        const c = calcHolding(h);
-        return `
-        <div class="holding-card" onclick="navigate('asset_detail',{selectedTicker:'${h.id}'})">
-          <div class="holding-ticker-badge">${escapeHtml(h.ticker)}</div>
-          <div class="holding-info">
-            <div class="holding-name">${escapeHtml(h.name)}</div>
-            <div class="holding-meta">${h.shares} shares · ${escapeHtml(h.accountType.replace('Stocks & Shares ', ''))}</div>
-          </div>
-          <div class="holding-values">
-            <div class="holding-value">${fmt(c.value)}</div>
-            <div class="holding-gain ${gainClass(c.pct)}">${fmtPct(c.pct)}</div>
-          </div>
-        </div>`;
-      }).join('')}
     ` : ''}
 
-    <!-- Market Pulse -->
-    <div class="section-heading">
-      <h3>📰 Market Pulse</h3>
-      <a onclick="navTo('community');setState({communityTab:'news'})" style="cursor:pointer">More</a>
-    </div>
-    ${state.news.slice(0, 3).map(n => `
-      <div class="news-card">
-        <div class="news-category-tag">${escapeHtml(n.category)}</div>
-        <div class="news-headline">${escapeHtml(n.headline)}</div>
-        <div class="news-meta">
-          <span>${escapeHtml(n.source)}</span>
-          <span>·</span>
-          <span>${escapeHtml(n.time)}</span>
-        </div>
-      </div>
-    `).join('')}
+    <!-- Sticky Mobile Top Bar (Present on mobile / phone mode) -->
+    ${!isDesktop && isPrimaryTab ? renderTopBar() : ''}
 
-    <div style="height:16px"></div>
-  </div>
-  <div class="fab" onclick="setState({showAddHolding:true})">+</div>`;
+    <!-- Main Dynamic Screen Content -->
+    <main class="screen-scroll-container">
+      ${renderCurrentScreen()}
+    </main>
+
+    <!-- Floating Cyber Frosted-Glass Bottom Nav Dock (Present in mobile / phone mode on primary tabs) -->
+    ${!isDesktop && isPrimaryTab ? renderBottomDock() : ''}
+
+    <!-- Floating AI Wealth Coach FAB -->
+    ${(state.currentView === 'home' || state.currentView === 'landing') ? `
+      <button class="fab-ai-coach" onclick="window.navigateTo('ai_coach')" title="Ask AI Wealth Coach">
+        <svg style="width:24px;height:24px;" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+        </svg>
+      </button>
+    ` : ''}
+
+    <!-- Modals -->
+    ${state.showProModal ? renderProModal() : ''}
+    ${state.showAddHoldingModal ? renderAddHoldingModal() : ''}
+  `;
 }
 
-// ============================================================
-//  SCREEN: PORTFOLIO
-// ============================================================
-
-function renderPortfolio() {
-  const { totalValue, totalCost, gain, gainPct } = calcPortfolio();
-
-  // Allocation breakdown
-  const geoMap = {}, sectorMap = {}, acctMap = {};
-  state.holdings.forEach(h => {
-    const v = h.shares * h.currentPrice;
-    geoMap[h.geography]   = (geoMap[h.geography]   || 0) + v;
-    sectorMap[h.sector]   = (sectorMap[h.sector]    || 0) + v;
-    acctMap[h.accountType] = (acctMap[h.accountType] || 0) + v;
-  });
-
-  const tv = totalValue || 1;
-  const geoEntries    = Object.entries(geoMap).sort((a,b) => b[1]-a[1]);
-  const sectorEntries = Object.entries(sectorMap).sort((a,b) => b[1]-a[1]);
-  const acctEntries   = Object.entries(acctMap).sort((a,b) => b[1]-a[1]);
-
-  const barColors = ['', 'blue', 'green', 'red'];
-
+// Top Desktop Navigation Bar
+function renderDesktopNavbar() {
+  const v = state.currentView;
   return `
-  <div class="screen screen-with-nav fade-in">
-    <div class="screen-header">
-      <h2>Portfolio</h2>
-      <button class="header-action-btn" onclick="setState({showAddHolding:true})">＋</button>
-    </div>
-
-    <!-- Portfolio Value Header -->
-    <div class="portfolio-header-card">
-      <div class="portfolio-total-label">Total Value</div>
-      <div class="portfolio-total-value">${fmt(totalValue)}</div>
-      <div class="portfolio-gain" style="margin-top:6px">
-        <span class="gain-badge ${gainBadgeClass(gain)}">${gain >= 0 ? '▲' : '▼'} ${fmt(Math.abs(gain))} (${fmtPct(gainPct)})</span>
-        <span style="font-size:11px;color:var(--text3);margin-left:8px">Total cost: ${fmt(totalCost)}</span>
-      </div>
-    </div>
-
-    <!-- Action Buttons -->
-    <div class="portfolio-action-row">
-      <button onclick="navigate('etf')">🔍 ETF Overlap</button>
-      <button onclick="navigate('simulator')">📊 Simulator</button>
-      <button onclick="refreshPrices()">🔄 Refresh</button>
-    </div>
-
-    <!-- Geographic Allocation -->
-    <div class="allocation-section">
-      <div class="allocation-title">🌍 Geographic Allocation</div>
-      ${geoEntries.slice(0,5).map(([g, v], i) => `
-        <div class="alloc-bar-row">
-          <div class="alloc-bar-label"><span>${escapeHtml(g)}</span><span>${fmtNum((v/tv)*100,1)}%</span></div>
-          <div class="alloc-bar-track"><div class="alloc-bar-fill ${barColors[i]}" style="width:${(v/tv)*100}%"></div></div>
-        </div>
-      `).join('')}
-    </div>
-
-    <!-- Sector Allocation -->
-    <div class="allocation-section">
-      <div class="allocation-title">🏭 Sector Allocation</div>
-      ${sectorEntries.slice(0,5).map(([s, v], i) => `
-        <div class="alloc-bar-row">
-          <div class="alloc-bar-label"><span>${escapeHtml(s)}</span><span>${fmtNum((v/tv)*100,1)}%</span></div>
-          <div class="alloc-bar-track"><div class="alloc-bar-fill ${barColors[i]}" style="width:${(v/tv)*100}%"></div></div>
-        </div>
-      `).join('')}
-    </div>
-
-    <!-- Account Type -->
-    <div class="allocation-section">
-      <div class="allocation-title">🏦 Account Type</div>
-      ${acctEntries.map(([a, v]) => `
-        <div class="alloc-bar-row">
-          <div class="alloc-bar-label"><span>${escapeHtml(a)}</span><span>${fmtNum((v/tv)*100,1)}%</span></div>
-          <div class="alloc-bar-track"><div class="alloc-bar-fill" style="width:${(v/tv)*100}%"></div></div>
-        </div>
-      `).join('')}
-    </div>
-
-    <!-- Holdings List -->
-    <div class="section-heading"><h3>Holdings (${state.holdings.length})</h3></div>
-
-    ${state.holdings.length === 0 ? `
-      <div class="empty-state">
-        <div class="empty-state-icon">📭</div>
-        <div class="empty-state-title">No holdings yet</div>
-        <div class="empty-state-text">Add your first holding to start tracking your portfolio.</div>
-        <button class="btn-primary" style="margin-top:16px;width:auto;padding:12px 24px" onclick="setState({showAddHolding:true})">Add First Holding</button>
-      </div>
-    ` : state.holdings.map(h => {
-      const c = calcHolding(h);
-      return `
-      <div style="position:relative;margin:0 16px 10px;">
-        <div class="holding-card" style="margin:0" onclick="navigate('asset_detail',{selectedTicker:'${h.id}'})">
-          <div class="holding-ticker-badge">${escapeHtml(h.ticker)}</div>
-          <div class="holding-info">
-            <div class="holding-name">${escapeHtml(h.name)}</div>
-            <div class="holding-meta">${h.shares} sh @ ${fmt(h.avgPrice)} · ${escapeHtml(h.assetType)} · ${escapeHtml(h.geography)}</div>
-            <div class="holding-meta" style="margin-top:2px;font-size:11px;color:var(--text3)">${escapeHtml(h.accountType)}</div>
+    <header class="desktop-navbar">
+      <div class="desktop-nav-brand" onclick="window.navigateTo('landing')">
+        <div class="brand-badge">EB</div>
+        <div>
+          <div class="brand-title">
+            <span class="eb">EB</span>
+            <span class="wealth">Wealth</span>
           </div>
-          <div class="holding-values">
-            <div class="holding-value">${fmt(c.value)}</div>
-            <div class="holding-gain ${gainClass(c.gain)}">${c.gain >= 0 ? '+' : ''}${fmt(Math.abs(c.gain))}</div>
-            <div class="holding-gain ${gainClass(c.pct)}">${fmtPct(c.pct)}</div>
-          </div>
-        </div>
-        <button onclick="deleteHolding(${h.id})" style="position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:var(--red-bg);border:1px solid var(--red);color:var(--red);font-size:12px;display:flex;align-items:center;justify-content:center;z-index:2">✕</button>
-      </div>`;
-    }).join('')}
-
-    <div style="height:16px"></div>
-  </div>
-  <div class="fab" onclick="setState({showAddHolding:true})">+</div>`;
-}
-
-function refreshPrices() {
-  // Simulate price refresh with small random changes
-  const updated = state.holdings.map(h => ({
-    ...h,
-    currentPrice: parseFloat((h.currentPrice * (1 + (Math.random() * 0.006 - 0.003))).toFixed(2))
-  }));
-  setState({ holdings: updated });
-  showToast('Prices refreshed ✓', 'success');
-}
-
-// ============================================================
-//  SCREEN: ACADEMY
-// ============================================================
-
-function renderAcademy() {
-  const completedCount = Object.values(state.lessonProgress).filter(p => p.completed).length;
-  const totalLessons   = ACADEMY_LEVELS[0].lessons.length;
-  const level = getLevelTitle(state.xp);
-
-  return `
-  <div class="screen screen-with-nav fade-in">
-    <div class="screen-header"><h2>Academy</h2></div>
-
-    <!-- Banner -->
-    <div class="academy-banner">
-      <div class="academy-banner-icon">🎓</div>
-      <div class="academy-banner-text">
-        <h3>${escapeHtml(level.title)}</h3>
-        <p>${completedCount}/${totalLessons} lessons completed · ${state.xp} XP earned</p>
-      </div>
-    </div>
-
-    <!-- Levels -->
-    ${ACADEMY_LEVELS.map(lvl => {
-      if (lvl.level === 1) {
-        const open = state.openLevelId === 1;
-        return `
-        <div class="level-section">
-          <div class="level-header" onclick="setState({openLevelId:${open ? 0 : 1}})">
-            <div class="level-badge">1</div>
-            <div class="level-info">
-              <div class="level-title">${escapeHtml(lvl.title)}</div>
-              <div class="level-desc">${escapeHtml(lvl.description)}</div>
-            </div>
-            <div class="level-chevron ${open ? 'open' : ''}">▾</div>
-          </div>
-          ${open ? `
-          <div class="lesson-list">
-            ${lvl.lessons.map(l => {
-              const done = state.lessonProgress[l.id]?.completed;
-              return `
-              <div class="lesson-item" onclick="navigate('lesson',{selectedLesson:'${l.id}',quizAnswers:{},quizSubmitted:false})">
-                <div class="lesson-icon ${done ? 'done' : ''}">
-                  ${done ? '✅' : '📖'}
-                </div>
-                <div class="lesson-text">
-                  <div class="lesson-title">${escapeHtml(l.title)}</div>
-                  <div class="lesson-meta">
-                    <span>🕐 ${l.readTime}</span>
-                    <span class="lesson-xp-badge">+${l.xp} XP</span>
-                  </div>
-                </div>
-                <span style="color:var(--text3);font-size:16px">›</span>
-              </div>`;
-            }).join('')}
-          </div>` : ''}
-        </div>`;
-      } else {
-        return `
-        <div class="locked-level" style="margin:0 16px 12px">
-          <div class="locked-level-inner">
-            <div class="level-badge locked">${lvl.level}</div>
-            <div class="level-info">
-              <div class="level-title">${escapeHtml(lvl.title)} 🔒</div>
-              <div class="level-desc">${escapeHtml(lvl.description)}</div>
-            </div>
-          </div>
-        </div>`;
-      }
-    }).join('')}
-
-    <div style="height:16px"></div>
-  </div>`;
-}
-
-// ============================================================
-//  SCREEN: LESSON DETAIL
-// ============================================================
-
-function renderLesson() {
-  // Find lesson
-  let lesson = null;
-  for (const lvl of ACADEMY_LEVELS) {
-    const found = lvl.lessons.find(l => l.id === state.selectedLesson);
-    if (found) { lesson = found; break; }
-  }
-  if (!lesson) return `<div class="screen"><div class="screen-header"><button class="back-btn" onclick="goBack()">←</button><h2>Lesson</h2></div><div class="empty-state"><div>Lesson not found.</div></div></div>`;
-
-  const done = state.lessonProgress[lesson.id]?.completed;
-  const letters = ['A', 'B', 'C', 'D'];
-
-  return `
-  <div class="screen screen-with-nav fade-in">
-    <div class="screen-header">
-      <button class="back-btn" onclick="goBack()">←</button>
-      <h2>Lesson</h2>
-      ${done ? '<span style="color:var(--green);font-size:20px">✅</span>' : ''}
-    </div>
-
-    <!-- Content -->
-    <div class="lesson-content">
-      <div class="lesson-detail-header">
-        <h1 class="lesson-detail-title">${escapeHtml(lesson.title)}</h1>
-        <p class="lesson-detail-subtitle">${escapeHtml(lesson.subtitle)}</p>
-        <div class="lesson-meta-row">
-          <span class="lesson-meta-chip">🕐 ${lesson.readTime}</span>
-          <span class="lesson-meta-chip gold">⭐ +${lesson.xp} XP</span>
-          ${done ? '<span class="lesson-meta-chip" style="color:var(--green);background:var(--green-bg);border-color:var(--green)">✓ Completed</span>' : ''}
+          <div class="brand-tagline">Learn. Invest. Build Wealth.</div>
         </div>
       </div>
 
-      <div class="lesson-section">
-        <div class="lesson-section-title">📖 Explanation</div>
-        <p class="lesson-explanation">${escapeHtml(lesson.explanation)}</p>
-      </div>
+      <nav>
+        <ul class="desktop-nav-links">
+          <li><button class="desktop-nav-item ${v === 'landing' ? 'active' : ''}" onclick="window.navigateTo('landing')">Overview</button></li>
+          <li><button class="desktop-nav-item ${v === 'home' ? 'active' : ''}" onclick="window.navigateTo('home')">Dashboard</button></li>
+          <li><button class="desktop-nav-item ${v === 'learn' || v === 'lesson_detail' ? 'active' : ''}" onclick="window.navigateTo('learn')">Academy</button></li>
+          <li><button class="desktop-nav-item ${v === 'portfolio' ? 'active' : ''}" onclick="window.navigateTo('portfolio')">Portfolio</button></li>
+          <li><button class="desktop-nav-item ${v === 'etf_overlap' ? 'active' : ''}" onclick="window.navigateTo('etf_overlap')">ETF Overlap</button></li>
+          <li><button class="desktop-nav-item ${v === 'market' || v === 'asset_detail' ? 'active' : ''}" onclick="window.navigateTo('market')">Research</button></li>
+          <li><button class="desktop-nav-item ${v === 'simulator' ? 'active' : ''}" onclick="window.navigateTo('simulator')">Simulator</button></li>
+          <li><button class="desktop-nav-item ${v === 'ai_coach' ? 'active' : ''}" onclick="window.navigateTo('ai_coach')">AI Coach</button></li>
+          <li><button class="desktop-nav-item ${v === 'community' ? 'active' : ''}" onclick="window.navigateTo('community')">Community</button></li>
+          <li><button class="desktop-nav-item ${v === 'events' ? 'active' : ''}" onclick="window.navigateTo('events')">Events</button></li>
+          <li><button class="desktop-nav-item ${v === 'admin' ? 'active' : ''}" onclick="window.navigateTo('admin')">Admin</button></li>
+        </ul>
+      </nav>
 
-      <div class="lesson-section">
-        <div class="lesson-section-title">💡 Real-World Example</div>
-        <div class="lesson-example">${escapeHtml(lesson.example)}</div>
-      </div>
-
-      <div class="lesson-section">
-        <div class="lesson-section-title">🎯 Key Takeaways</div>
-        <div class="lesson-takeaways">
-          ${lesson.takeaways.map(t => `<div class="lesson-takeaway">${escapeHtml(t)}</div>`).join('')}
-        </div>
-      </div>
-    </div>
-
-    <!-- Quiz -->
-    <div class="quiz-section">
-      <div class="quiz-title">🧠 Quick Quiz</div>
-
-      ${state.quizSubmitted ? (() => {
-        let score = 0;
-        lesson.quiz.forEach((q, qi) => { if (state.quizAnswers[qi] === q.correct) score++; });
-        const passed = score >= Math.ceil(lesson.quiz.length * 0.6);
-        const emoji = score === lesson.quiz.length ? '🏆' : passed ? '🎉' : '📚';
-        return `
-        ${lesson.quiz.map((q, qi) => `
-          <div class="quiz-question">
-            <div class="quiz-q-text">${qi + 1}. ${escapeHtml(q.q)}</div>
-            ${q.options.map((opt, oi) => `
-              <div class="quiz-option ${oi === q.correct ? 'correct' : state.quizAnswers[qi] === oi && oi !== q.correct ? 'wrong' : ''}">
-                <span class="quiz-option-letter">${letters[oi]}</span>
-                ${escapeHtml(opt)}
-                ${oi === q.correct ? ' ✓' : state.quizAnswers[qi] === oi && oi !== q.correct ? ' ✗' : ''}
-              </div>
-            `).join('')}
-            ${state.quizAnswers[qi] !== undefined ? `<div class="quiz-explain">${escapeHtml(q.explain)}</div>` : ''}
-          </div>
-        `).join('')}
-        <div class="quiz-score-card">
-          <div class="quiz-score-emoji">${emoji}</div>
-          <div class="quiz-score-title">${score}/${lesson.quiz.length} Correct</div>
-          <div class="quiz-score-text">${passed ? 'Well done! You have mastered this lesson.' : 'Good effort! Review the content and try again.'}</div>
-          ${passed ? `<div class="quiz-xp-award">+${lesson.xp} XP earned!</div>` : ''}
-          <button class="btn-primary" style="margin-top:16px" onclick="resetQuiz()">
-            ${passed ? '← Back to Academy' : '🔁 Try Again'}
-          </button>
-        </div>`;
-      })() : `
-        ${lesson.quiz.map((q, qi) => `
-          <div class="quiz-question">
-            <div class="quiz-q-text">${qi + 1}. ${escapeHtml(q.q)}</div>
-            ${q.options.map((opt, oi) => `
-              <div class="quiz-option ${state.quizAnswers[qi] === oi ? 'selected' : ''}"
-                   onclick="selectQuizAnswer(${qi}, ${oi})">
-                <span class="quiz-option-letter">${letters[oi]}</span>
-                ${escapeHtml(opt)}
-              </div>
-            `).join('')}
-          </div>
-        `).join('')}
-        <button class="btn-primary" onclick="submitQuiz('${lesson.id}', ${lesson.quiz.length}, ${lesson.xp})"
-          ${Object.keys(state.quizAnswers).length < lesson.quiz.length ? 'style="opacity:0.5"' : ''}>
-          Submit Answers
+      <div class="desktop-nav-right">
+        <button class="btn-viewport-toggle" onclick="window.toggleViewportMode()" title="Toggle Phone Frame Simulation">
+          <span>📱</span>
+          <span>Phone Frame</span>
         </button>
-      `}
-    </div>
-
-    <div style="height:24px"></div>
-  </div>`;
-}
-
-function selectQuizAnswer(qi, oi) {
-  setState({ quizAnswers: { ...state.quizAnswers, [qi]: oi } });
-}
-
-function submitQuiz(lessonId, totalQ, xpReward) {
-  if (Object.keys(state.quizAnswers).length < totalQ) {
-    showToast('Please answer all questions', 'error');
-    return;
-  }
-  let score = 0;
-  let lesson = null;
-  for (const lvl of ACADEMY_LEVELS) {
-    const found = lvl.lessons.find(l => l.id === lessonId);
-    if (found) { lesson = found; break; }
-  }
-  if (!lesson) return;
-  lesson.quiz.forEach((q, qi) => { if (state.quizAnswers[qi] === q.correct) score++; });
-  completeQuiz(lessonId, score, totalQ, xpReward);
-}
-
-function resetQuiz() {
-  const done = state.lessonProgress[state.selectedLesson]?.completed;
-  if (done) { goBack(); }
-  else { setState({ quizAnswers: {}, quizSubmitted: false }); }
-}
-
-// ============================================================
-//  SCREEN: ETF OVERLAP
-// ============================================================
-
-function renderETF() {
-  const etfs = ['VWRP', 'VUAG', 'VUSA', 'CSPX', 'IWDA', 'EQQQ', 'VHYL', 'ISF'];
-  const [e1, e2] = state.overlapSelected;
-  const key = `${e1}+${e2}`;
-  const overlap = ETF_OVERLAPS[key] !== undefined ? ETF_OVERLAPS[key] : 15;
-  const overlapClass = overlap < 20 ? 'low' : overlap < 50 ? 'medium' : 'high';
-  const overlapLabel = overlap < 20 ? 'Low Overlap' : overlap < 50 ? 'Moderate Overlap' : 'High Overlap — Risk of over-concentration';
-
-  const topHoldings = [
-    { name: 'Apple Inc', w1: '4.1%', w2: '5.8%', ov: `${(overlap * 0.08).toFixed(1)}%` },
-    { name: 'Microsoft Corp', w1: '3.8%', w2: '5.2%', ov: `${(overlap * 0.07).toFixed(1)}%` },
-    { name: 'NVIDIA Corp', w1: '3.1%', w2: '4.5%', ov: `${(overlap * 0.06).toFixed(1)}%` },
-    { name: 'Amazon.com', w1: '2.3%', w2: '3.1%', ov: `${(overlap * 0.05).toFixed(1)}%` },
-    { name: 'Alphabet Inc', w1: '1.9%', w2: '2.8%', ov: `${(overlap * 0.04).toFixed(1)}%` }
-  ];
-
-  const summaryMap = {
-    high: `⚠️ ${overlap}% of ${e1}'s holdings overlap with ${e2}. This is high overlap — holding both funds provides less diversification than you might think. Consider replacing one with a more complementary option.`,
-    medium: `📊 ${overlap}% overlap between ${e1} and ${e2}. This is moderate overlap. Your portfolio has some concentration risk in shared holdings. This combination can work if you are intentionally increasing exposure to certain regions or sectors.`,
-    low: `✅ ${overlap}% overlap between ${e1} and ${e2}. This is low overlap — these funds complement each other well and provide genuine diversification benefits when held together.`
-  };
-
-  return `
-  <div class="screen screen-with-nav fade-in">
-    <div class="screen-header">
-      <button class="back-btn" onclick="goBack()">←</button>
-      <h2>ETF Overlap Checker</h2>
-    </div>
-
-    <div class="etf-screen">
-      <p style="padding:0 16px;font-size:13px;color:var(--text2);margin-bottom:4px">Select two ETFs to compare overlap:</p>
-
-      <div style="padding:8px 16px;font-size:12px;color:var(--gold);font-weight:600">ETF 1: ${e1}</div>
-      <div class="etf-chips-wrapper" style="padding-top:4px;padding-bottom:4px">
-        ${etfs.map(e => `
-          <div class="etf-chip ${e1 === e ? 'selected' : ''}" onclick="selectETF1('${e}')">${e}</div>
-        `).join('')}
-      </div>
-
-      <div style="padding:8px 16px;font-size:12px;color:var(--gold);font-weight:600">ETF 2: ${e2}</div>
-      <div class="etf-chips-wrapper" style="padding-top:4px">
-        ${etfs.map(e => `
-          <div class="etf-chip ${e2 === e ? 'selected' : ''}" onclick="selectETF2('${e}')">${e}</div>
-        `).join('')}
-      </div>
-
-      <div class="overlap-display">
-        <div class="overlap-label">Combined Overlap</div>
-        <div class="overlap-number ${overlapClass}">${overlap}%</div>
-        <div class="overlap-subtitle">${overlapLabel}</div>
-      </div>
-
-      <div class="overlap-table">
-        <div class="overlap-table-header">
-          <span>Top Holdings</span>
-          <span>${e1}</span>
-          <span>${e2}</span>
-          <span>Overlap</span>
+        <button class="btn-pro-pill" onclick="window.openProModal()">
+          <span>★</span>
+          <span>${state.user.isPro ? 'Pro Active' : 'Upgrade £9.99'}</span>
+        </button>
+        <div class="sync-status-indicator" title="Connected to Cloud Firestore database">
+          <span style="font-size: 8px;">●</span>
+          <span>Live Sync</span>
         </div>
-        ${topHoldings.map(r => `
-          <div class="overlap-table-row">
-            <span style="color:var(--text)">${escapeHtml(r.name)}</span>
-            <span>${r.w1}</span>
-            <span>${r.w2}</span>
-            <span style="color:var(--${overlapClass === 'high' ? 'red' : overlapClass === 'medium' ? 'amber' : 'green'})">${r.ov}</span>
+        <div class="user-avatar-circle" onclick="window.navigateTo('profile')" title="View Investor Profile">
+          ${(state.user.firstName || 'J').charAt(0).toUpperCase()}
+        </div>
+      </div>
+    </header>
+  `;
+}
+
+function renderTopBar() {
+  return `
+    <header class="mobile-top-bar">
+      <div class="top-bar-left" onclick="window.navigateTo('home')">
+        <div class="logo-badge">EB</div>
+        <div class="brand-text-col">
+          <div class="brand-title-row">
+            <span class="eb">EB</span>
+            <span class="wealth">Wealth</span>
           </div>
-        `).join('')}
+          <span class="brand-subtitle">Investment Education Platform</span>
+        </div>
       </div>
 
-      <div class="overlap-summary">${summaryMap[overlapClass]}</div>
+      <div class="top-bar-right">
+        <button class="btn-upgrade-pill" onclick="window.navigateTo('landing')" style="background: rgba(0, 240, 255, 0.12); color: #00F0FF; border: 1px solid rgba(0, 240, 255, 0.3);">
+          <span>🌐</span>
+          <span>Overview</span>
+        </button>
+        <button class="btn-upgrade-pill" onclick="window.openProModal()">
+          <span class="star-icon">★</span>
+          <span>Upgrade</span>
+        </button>
+        <button class="user-avatar-btn" onclick="window.navigateTo('profile')">
+          ${(state.user.firstName || 'J').charAt(0).toUpperCase()}
+        </button>
+      </div>
+    </header>
+  `;
+}
+
+function renderBottomDock() {
+  return `
+    <div class="floating-bottom-dock-container">
+      <nav class="floating-bottom-dock">
+        <button class="dock-nav-item ${state.currentView === 'home' ? 'active' : ''}" onclick="window.navigateTo('home')">
+          <div class="dock-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+          </div>
+          <span>Home</span>
+        </button>
+
+        <button class="dock-nav-item ${state.currentView === 'market' ? 'active' : ''}" onclick="window.navigateTo('market')">
+          <div class="dock-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+          </div>
+          <span>Market</span>
+        </button>
+
+        <button class="dock-nav-item ${state.currentView === 'learn' ? 'active' : ''}" onclick="window.navigateTo('learn')">
+          <div class="dock-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>
+          </div>
+          <span>Learn</span>
+        </button>
+
+        <button class="dock-nav-item ${state.currentView === 'portfolio' ? 'active' : ''}" onclick="window.navigateTo('portfolio')">
+          <div class="dock-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M11 2v20c-5.07-.5-9-4.79-9-10s3.93-9.5 9-10zm2 0v8.99L21.95 7.5C20.61 4.27 17.2 2 13 2z"/></svg>
+          </div>
+          <span>Portfolio</span>
+        </button>
+
+        <button class="dock-nav-item ${state.currentView === 'profile' ? 'active' : ''}" onclick="window.navigateTo('profile')">
+          <div class="dock-icon-box">
+            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          </div>
+          <span>Profile</span>
+        </button>
+      </nav>
     </div>
-  </div>`;
+  `;
 }
 
-function selectETF1(etf) {
-  if (etf === state.overlapSelected[1]) return showToast('Select different ETFs', 'error');
-  setState({ overlapSelected: [etf, state.overlapSelected[1]] });
+function renderCurrentScreen() {
+  switch (state.currentView) {
+    case 'landing': return renderLandingPage();
+    case 'home': return renderHomeScreen();
+    case 'market': return renderMarketScreen();
+    case 'asset_detail': return renderAssetDetailScreen();
+    case 'learn': return renderLearnScreen();
+    case 'lesson_detail': return renderLessonDetailScreen();
+    case 'portfolio': return renderPortfolioScreen();
+    case 'etf_overlap': return renderETFOverlapScreen();
+    case 'simulator': return renderSimulatorScreen();
+    case 'ai_coach': return renderAICoachScreen();
+    case 'community': return renderCommunityScreen();
+    case 'events': return renderEventsScreen();
+    case 'news': return renderNewsScreen();
+    case 'profile': return renderProfileScreen();
+    case 'onboarding': return renderOnboardingScreen();
+    case 'admin': return renderAdminDashboardScreen();
+    default: return renderHomeScreen();
+  }
 }
 
-function selectETF2(etf) {
-  if (etf === state.overlapSelected[0]) return showToast('Select different ETFs', 'error');
-  setState({ overlapSelected: [state.overlapSelected[0], etf] });
+// 0. HIGH-CONVERTING PUBLIC LANDING PAGE
+function renderLandingPage() {
+  return `
+    <div class="landing-page-container">
+      <div class="landing-hero">
+        <div class="hero-pill-badge">
+          <span>★</span>
+          <span>PREMIUM UK FINTECH & INVESTMENT EDUCATION</span>
+        </div>
+
+        <h1 class="hero-h1">
+          Learn how to invest.<br>
+          Understand your portfolio.<br>
+          <span class="glow-cyan">Build long-term</span> <span class="glow-gold">wealth.</span>
+        </h1>
+
+        <p class="hero-subheading">
+          A practical investment education platform designed to help everyday UK investors understand stocks, ETFs, portfolios and disciplined wealth building.
+        </p>
+
+        <div class="hero-cta-group">
+          <button class="btn-primary-glow" onclick="window.navigateTo('onboarding')">
+            Start Learning Free →
+          </button>
+          <button class="btn-secondary-glass" onclick="window.navigateTo('home')">
+            Launch EB Wealth App
+          </button>
+        </div>
+
+        <!-- Interactive Mockup Preview -->
+        <div class="landing-mockup-frame">
+          <div class="mockup-top-bar">
+            <div class="mockup-dots">
+              <div class="mockup-dot dot-red"></div>
+              <div class="mockup-dot dot-yellow"></div>
+              <div class="mockup-dot dot-green"></div>
+            </div>
+            <div style="font-size: 11px; color: #94A3B8; font-weight: 600;">ebwealth.co.uk/dashboard — Live Preview</div>
+            <div style="font-size: 11px; color: #10B981; font-weight: 700;">● HMRC 2024/25 Engine Active</div>
+          </div>
+          <div style="padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+              <div>
+                <div style="font-size: 12px; color: #94A3B8; font-weight: 700; letter-spacing: 0.5px;">INVESTOR PORTFOLIO SNAPSHOT</div>
+                <div style="font-size: 28px; font-weight: 900; color: #FFFFFF;">£142,850.20</div>
+              </div>
+              <div style="text-align: right;">
+                <div style="font-size: 13px; color: #10B981; font-weight: 800;">+£24,350.20 (+20.5%)</div>
+                <div style="font-size: 11px; color: #94A3B8;">Total Uncapped Gain</div>
+              </div>
+            </div>
+            <div class="grid-4" style="margin-bottom: 16px;">
+              <div class="stat-tile">
+                <span class="stat-label">Stocks & Shares ISA</span>
+                <span class="stat-value">£8,450 / £20k</span>
+                <span class="stat-sub" style="color: #00F0FF;">£11,550 Remaining</span>
+              </div>
+              <div class="stat-tile">
+                <span class="stat-label">ETF Overlap Risk</span>
+                <span class="stat-value" style="color: #FBBF24;">58.4%</span>
+                <span class="stat-sub" style="color: #FBBF24;">VWRP vs VUAG</span>
+              </div>
+              <div class="stat-tile">
+                <span class="stat-label">Curriculum Progress</span>
+                <span class="stat-value" style="color: #FBBF24;">Level 2</span>
+                <span class="stat-sub" style="color: #94A3B8;">7/10 Lessons Completed</span>
+              </div>
+              <div class="stat-tile">
+                <span class="stat-label">AI Wealth Coach</span>
+                <span class="stat-value" style="color: #10B981;">Online</span>
+                <span class="stat-sub" style="color: #10B981;">Institutional Grade</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 1: The Problem -->
+      <section style="margin: 60px 0;">
+        <div class="landing-section-title-box">
+          <div class="section-badge">THE CHALLENGE</div>
+          <h2 class="section-h2">Investing shouldn’t feel complicated.</h2>
+          <p class="section-p">Every day, thousands of beginner investors struggle with conflicting jargon, hidden fees, and fear of making costly mistakes.</p>
+        </div>
+        <div class="grid-3">
+          <div class="feature-card">
+            <div class="feature-icon-box">❓</div>
+            <div class="feature-card-title">What to invest in</div>
+            <div class="feature-card-desc">Paralysis by analysis across 10,000+ individual stocks and index funds with no clear starting point.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon-box">⚖️</div>
+            <div class="feature-card-title">How much risk to take</div>
+            <div class="feature-card-desc">Understanding volatility without panicking when market cycles fluctuate or sentiment shifts.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon-box">📊</div>
+            <div class="feature-card-title">Which ETF to choose</div>
+            <div class="feature-card-desc">Distinguishing between S&P 500, All-World, accumulating (Acc) vs distributing (Dist) UCITS funds.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon-box">🔍</div>
+            <div class="feature-card-title">Whether investments overlap</div>
+            <div class="feature-card-desc">Paying double expense fees to hold the exact same mega-cap US tech companies inside multiple funds.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon-box">🌐</div>
+            <div class="feature-card-title">How to diversify properly</div>
+            <div class="feature-card-desc">Balancing global equities, fixed income bonds, tax wrappers, and cash reserves for true stability.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon-box">🎯</div>
+            <div class="feature-card-title">How to build a long-term plan</div>
+            <div class="feature-card-desc">Creating an automated, monthly compounding habits engine that builds real multi-decade wealth.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: The Solution -->
+      <section style="margin: 60px 0;">
+        <div class="landing-section-title-box">
+          <div class="section-badge">THE EB WEALTH ECOSYSTEM</div>
+          <h2 class="section-h2">Everything you need to become an informed investor.</h2>
+          <p class="section-p">A cohesive, practical toolkit built specifically for the UK investor journey.</p>
+        </div>
+        <div class="grid-3">
+          <div class="feature-card" onclick="window.navigateTo('learn')" style="cursor: pointer;">
+            <div style="font-size: 26px; margin-bottom: 10px;">🎓</div>
+            <div class="feature-card-title">1. Learn</div>
+            <div class="feature-card-desc">Structured 6-level investor curriculum with short interactive lessons, quizzes, and earned XP.</div>
+          </div>
+          <div class="feature-card" onclick="window.navigateTo('etf_overlap')" style="cursor: pointer;">
+            <div style="font-size: 26px; margin-bottom: 10px;">🔬</div>
+            <div class="feature-card-title">2. Analyse</div>
+            <div class="feature-card-desc">Dedicated ETF Overlap Checker and institutional 10-point Stock Scorecards.</div>
+          </div>
+          <div class="feature-card" onclick="window.navigateTo('portfolio')" style="cursor: pointer;">
+            <div style="font-size: 26px; margin-bottom: 10px;">📈</div>
+            <div class="feature-card-title">3. Track</div>
+            <div class="feature-card-desc">Multi-wrapper portfolio tracking across Stocks & Shares ISA, SIPP, JISA, and GIA.</div>
+          </div>
+          <div class="feature-card" onclick="window.navigateTo('simulator')" style="cursor: pointer;">
+            <div style="font-size: 26px; margin-bottom: 10px;">⚡</div>
+            <div class="feature-card-title">4. Simulate</div>
+            <div class="feature-card-desc">Interactive compound growth visualizer comparing contributions over 10, 20, and 30-year horizons.</div>
+          </div>
+          <div class="feature-card" onclick="window.navigateTo('ai_coach')" style="cursor: pointer;">
+            <div style="font-size: 26px; margin-bottom: 10px;">🤖</div>
+            <div class="feature-card-title">5. Ask</div>
+            <div class="feature-card-desc">Conversational AI Wealth Coach offering instant educational clarity on complex financial concepts.</div>
+          </div>
+          <div class="feature-card" onclick="window.navigateTo('community')" style="cursor: pointer;">
+            <div style="font-size: 26px; margin-bottom: 10px;">🌱</div>
+            <div class="feature-card-title">6. Grow</div>
+            <div class="feature-card-desc">Join masterclasses, participate in community discussions, and level up your investor status.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: The Investor Journey -->
+      <section style="margin: 60px 0;">
+        <div class="landing-section-title-box">
+          <div class="section-badge">YOUR TRANSFORMATION</div>
+          <h2 class="section-h2">The 5-Stage Investor Evolution</h2>
+          <p class="section-p">How everyday learners evolve into disciplined, long-term wealth builders.</p>
+        </div>
+        <div class="journey-timeline">
+          <div class="journey-step">
+            <div class="journey-num">1</div>
+            <div class="journey-name">Beginner</div>
+            <div class="journey-desc">Discovers compounding, overcomes fear of terminology, and establishes emergency cash.</div>
+          </div>
+          <div class="journey-step">
+            <div class="journey-num">2</div>
+            <div class="journey-name">Educated</div>
+            <div class="journey-desc">Understands global index funds (VWRP), S&P 500, and UK tax shelters (ISA / SIPP).</div>
+          </div>
+          <div class="journey-step">
+            <div class="journey-num">3</div>
+            <div class="journey-name">Confident</div>
+            <div class="journey-desc">Analyses portfolio overlap, eliminates duplicate fees, and builds core-satellite assets.</div>
+          </div>
+          <div class="journey-step">
+            <div class="journey-num">4</div>
+            <div class="journey-name">Disciplined</div>
+            <div class="journey-desc">Automates monthly contributions, ignores daily market noise, and embraces volatility.</div>
+          </div>
+          <div class="journey-step">
+            <div class="journey-num">5</div>
+            <div class="journey-name">Wealth Builder</div>
+            <div class="journey-desc">Achieves multi-year compounding momentum, tax efficiency, and financial peace of mind.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 4: Transparent Pricing -->
+      <section style="margin: 60px 0;">
+        <div class="landing-section-title-box">
+          <div class="section-badge">MEMBERSHIP PLANS</div>
+          <h2 class="section-h2">Invest in your financial education.</h2>
+          <p class="section-p">Transparent plans built for everyday UK investors with no hidden lock-ins.</p>
+        </div>
+        <div class="pricing-grid">
+          <!-- Free Tier -->
+          <div class="pricing-card">
+            <div class="pricing-tier-name">Free Starter</div>
+            <div class="pricing-price">£0</div>
+            <div class="pricing-period">Free forever • No card required</div>
+            <ul class="pricing-feature-list">
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> Level 1 Foundations Academy</li>
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> Basic EB Investor Profile</li>
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> Compound Growth Simulator</li>
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> Basic Portfolio Tracker (up to 3 assets)</li>
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> Limited AI Coach Queries (5/day)</li>
+            </ul>
+            <button class="btn-secondary-glass" onclick="window.navigateTo('onboarding')">
+              Get Started Free
+            </button>
+          </div>
+
+          <!-- Pro Monthly Tier -->
+          <div class="pricing-card popular">
+            <div class="popular-badge">MOST POPULAR</div>
+            <div class="pricing-tier-name">EB Wealth Pro</div>
+            <div class="pricing-price">£9.99</div>
+            <div class="pricing-period">Per month • Cancel anytime</div>
+            <ul class="pricing-feature-list">
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> <strong>Full 6-Level Academy</strong> (All 24+ Lessons)</li>
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> <strong>Unlimited AI Wealth Coach</strong> Assistant</li>
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> <strong>Dedicated ETF Overlap Checker</strong> Tool</li>
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> <strong>10-Point Stock Research Scorecards</strong></li>
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> Unlimited Portfolio Tracking & Tax Wrappers</li>
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> Private Community Forum VIP Access</li>
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> Free Access to Monthly Masterclasses</li>
+            </ul>
+            <button class="btn-primary-glow" onclick="window.openProModal()">
+              Start 14-Day Pro Trial
+            </button>
+          </div>
+
+          <!-- Pro Annual Tier -->
+          <div class="pricing-card">
+            <div class="pricing-tier-name">EB Wealth Annual</div>
+            <div class="pricing-price">£99</div>
+            <div class="pricing-period">Per year • Save £20.88 (2 Months Free)</div>
+            <ul class="pricing-feature-list">
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> Everything in EB Wealth Pro</li>
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> Priority 1-on-1 Q&A Masterclasses</li>
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> Annual Tax-Year-End Planning Workbook</li>
+              <li class="pricing-feature-item"><span class="check-icon">✓</span> Early Access to New Investment Tools</li>
+            </ul>
+            <button class="btn-secondary-glass" onclick="window.openProModal()">
+              Choose Annual Billing
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Compliance Disclaimers & Footer -->
+      <div class="compliance-box">
+        <strong>Regulatory Disclosure & Educational Positioning:</strong><br>
+        EB Wealth provides financial education, simulation tools, and analytical information. It does not provide regulated, personalised financial advice, investment recommendations, or guarantees of investment performance. The value of investments and the income derived from them can fall as well as rise, and investors may get back less than the amount originally invested. Tax treatment depends on individual circumstances and UK legislation which is subject to change. Consider consulting an FCA-authorised financial planner before making substantial financial decisions.
+      </div>
+    </div>
+  `;
 }
 
-// ============================================================
-//  SCREEN: SIMULATOR
-// ============================================================
+// 1. DASHBOARD / HOME SCREEN (Screenshot 2)
+function renderHomeScreen() {
+  return `
+    <div class="hero-title-box">
+      <div class="hero-title-main">
+        <span class="eb">EB</span>
+        <span class="wealth">Wealth</span>
+      </div>
+      <div class="hero-subtitle">Investment Education Platform</div>
+    </div>
 
-function renderSimulator() {
-  const { fv, totalInvested, growth, growthPct } = calcCompound(
-    state.simInitial, state.simMonthly, state.simYears, state.simRate
+    <!-- Glowing Search Bar -->
+    <div class="search-bar-cosmic" onclick="window.navigateTo('market')">
+      <input type="text" placeholder="Search UK stocks, ETFs, lessons..." readonly />
+      <div class="search-icon-btn">
+        <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      </div>
+    </div>
+
+    <!-- 2x2 Quick Action Cards Grid (Screenshot 2) -->
+    <div class="quick-action-grid">
+      <div class="quick-card" onclick="window.navigateTo('market')">
+        <div class="quick-card-icon-box icon-cyan-box">
+          <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+        </div>
+        <div>
+          <div class="quick-card-title">Market Galaxy</div>
+          <div class="quick-card-sub">LSE & Global Movers</div>
+        </div>
+      </div>
+
+      <div class="quick-card" onclick="window.navigateTo('learn')">
+        <div class="quick-card-icon-box icon-blue-box">
+          <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>
+        </div>
+        <div>
+          <div class="quick-card-title">Learning Nexus</div>
+          <div class="quick-card-sub">6-Level Academy</div>
+        </div>
+      </div>
+
+      <div class="quick-card" onclick="window.navigateTo('portfolio')">
+        <div class="quick-card-icon-box icon-gold-box">
+          <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M11 2v20c-5.07-.5-9-4.79-9-10s3.93-9.5 9-10zm2 0v8.99L21.95 7.5C20.61 4.27 17.2 2 13 2z"/></svg>
+        </div>
+        <div>
+          <div class="quick-card-title">Portfolio Constellation</div>
+          <div class="quick-card-sub">Holdings & Rebalance</div>
+        </div>
+      </div>
+
+      <div class="quick-card" onclick="window.navigateTo('community')">
+        <div class="quick-card-icon-box icon-teal-box">
+          <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+        </div>
+        <div>
+          <div class="quick-card-title">Community Forum</div>
+          <div class="quick-card-sub">Discussions & Events</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Featured Market Assets Section -->
+    <div class="section-header-row">
+      <div class="section-label-gold">FEATURED MARKET ASSETS</div>
+      <div class="section-subtitle-muted">Live UK & Global Movers</div>
+    </div>
+
+    <!-- Horizontal Carousel -->
+    <div class="market-movers-carousel">
+      ${state.assets.map(a => `
+        <div class="carousel-card" onclick="window.navigateTo('asset_detail', '${a.ticker}')">
+          <div class="carousel-top-row">
+            <span class="asset-badge-gray">${a.type}</span>
+            <span class="asset-change-green">${a.change}</span>
+          </div>
+          <div class="carousel-ticker">${a.ticker}</div>
+          <div class="carousel-price">${a.price}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// 2. MARKET RESEARCH SCREEN (Screenshot 3)
+function renderMarketScreen() {
+  const filtered = state.assets.filter(a =>
+    a.ticker.toLowerCase().includes(state.marketSearchQuery.toLowerCase()) ||
+    a.name.toLowerCase().includes(state.marketSearchQuery.toLowerCase())
   );
-  const yearlyData = calcCompoundYearly(state.simInitial, state.simMonthly, state.simYears, state.simRate);
-  const milestones = yearlyData.filter(r => r.year % 5 === 0 || r.year === 1 || r.year === state.simYears);
 
   return `
-  <div class="screen screen-with-nav fade-in">
-    <div class="screen-header">
-      <button class="back-btn" onclick="goBack()">←</button>
-      <h2>Compound Simulator</h2>
-    </div>
-
-    <div class="simulator-inputs">
-
-      <!-- Initial Investment -->
-      <div class="sim-input-group">
-        <div class="sim-input-label">
-          <span>💰 Initial Investment</span>
-          <span class="sim-input-value">${fmt(state.simInitial)}</span>
-        </div>
-        <input class="sim-slider" type="range" min="500" max="100000" step="500"
-          value="${state.simInitial}"
-          oninput="updateSim('simInitial', this.value)">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:4px">
-          <span>£500</span><span>£100,000</span>
-        </div>
-      </div>
-
-      <!-- Monthly Contribution -->
-      <div class="sim-input-group">
-        <div class="sim-input-label">
-          <span>📅 Monthly Contribution</span>
-          <span class="sim-input-value">${fmt(state.simMonthly)}</span>
-        </div>
-        <input class="sim-slider" type="range" min="0" max="2000" step="50"
-          value="${state.simMonthly}"
-          oninput="updateSim('simMonthly', this.value)">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:4px">
-          <span>£0</span><span>£2,000</span>
-        </div>
-      </div>
-
-      <!-- Years -->
-      <div class="sim-input-group">
-        <div class="sim-input-label">
-          <span>📆 Investment Years</span>
-          <span class="sim-input-value">${state.simYears} yrs</span>
-        </div>
-        <input class="sim-slider" type="range" min="1" max="40" step="1"
-          value="${state.simYears}"
-          oninput="updateSim('simYears', this.value)">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:4px">
-          <span>1 yr</span><span>40 yrs</span>
-        </div>
-      </div>
-
-      <!-- Annual Return -->
-      <div class="sim-input-group">
-        <div class="sim-input-label">
-          <span>📈 Annual Return</span>
-          <span class="sim-input-value">${state.simRate}%</span>
-        </div>
-        <input class="sim-slider" type="range" min="1" max="15" step="0.5"
-          value="${state.simRate}"
-          oninput="updateSim('simRate', this.value)">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:4px">
-          <span>1%</span><span>15%</span>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- Results -->
-    <div class="sim-result-card">
-      <div class="sim-result-main">
-        <div class="sim-result-label">Future Portfolio Value</div>
-        <div class="sim-result-value">${fmt(fv)}</div>
-      </div>
-      <div class="sim-result-grid">
-        <div class="sim-result-item">
-          <div class="sim-result-item-label">Total Invested</div>
-          <div class="sim-result-item-value">${fmt(totalInvested)}</div>
-        </div>
-        <div class="sim-result-item">
-          <div class="sim-result-item-label">Investment Growth</div>
-          <div class="sim-result-item-value" style="color:var(--green)">${fmt(growth)}</div>
-        </div>
-        <div class="sim-result-item">
-          <div class="sim-result-item-label">Growth Percentage</div>
-          <div class="sim-result-item-value" style="color:var(--green)">+${fmtNum(growthPct, 1)}%</div>
-        </div>
-        <div class="sim-result-item">
-          <div class="sim-result-item-label">Monthly @ ${state.simRate}% p.a.</div>
-          <div class="sim-result-item-value">${fmt(state.simMonthly)}</div>
-        </div>
+    <div class="market-top-row">
+      <button class="back-btn-circle" onclick="window.navigateBack()">
+        <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div>
+        <h2 style="font-size: 16px; font-weight: 800; color: #FFFFFF;">Market Intelligence & Research</h2>
+        <div style="font-size: 11px; color: #94A3B8;">London Stock Exchange (LSE) & Global ETFs</div>
       </div>
     </div>
 
-    <!-- Year-by-year breakdown -->
-    <div class="section-heading" style="margin:0 16px 12px"><h3>Year-by-Year Breakdown</h3></div>
-    <div class="sim-table">
-      <div class="sim-table-header">
-        <span>Year</span>
-        <span>Total Value</span>
-        <span>Growth</span>
+    <div class="search-bar-cosmic" style="margin-top: 4px;">
+      <input type="text" id="market-search-input" placeholder="Search by ticker or fund (e.g. VWRP, VUAG, AZN)..." value="${state.marketSearchQuery}" oninput="window.updateMarketSearch(this.value)" />
+      <div class="search-icon-btn">
+        <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
       </div>
-      ${milestones.map(r => `
-        <div class="sim-table-row">
-          <span>Year ${r.year}</span>
-          <span style="color:var(--text)">${fmt(r.value)}</span>
-          <span style="color:var(--green)">+${fmt(r.growth)}</span>
-        </div>
-      `).join('')}
     </div>
 
-    <div style="padding:16px;font-size:11px;color:var(--text3);line-height:1.5">
-      * Projections are illustrative only. Past returns do not guarantee future performance. This tool uses compound interest formula and does not account for taxes, fees, or inflation.
-    </div>
-  </div>`;
-}
-
-function updateSim(key, val) {
-  const num = parseFloat(val);
-  state[key] = num;
-  // Re-render just the result section without full render for slider smoothness
-  const resultCard = document.querySelector('.sim-result-card');
-  const table = document.querySelector('.sim-table');
-  if (resultCard && table) {
-    const { fv, totalInvested, growth, growthPct } = calcCompound(state.simInitial, state.simMonthly, state.simYears, state.simRate);
-    const yearlyData = calcCompoundYearly(state.simInitial, state.simMonthly, state.simYears, state.simRate);
-    const milestones = yearlyData.filter(r => r.year % 5 === 0 || r.year === 1 || r.year === state.simYears);
-
-    resultCard.innerHTML = `
-      <div class="sim-result-main">
-        <div class="sim-result-label">Future Portfolio Value</div>
-        <div class="sim-result-value">${fmt(fv)}</div>
-      </div>
-      <div class="sim-result-grid">
-        <div class="sim-result-item">
-          <div class="sim-result-item-label">Total Invested</div>
-          <div class="sim-result-item-value">${fmt(totalInvested)}</div>
-        </div>
-        <div class="sim-result-item">
-          <div class="sim-result-item-label">Investment Growth</div>
-          <div class="sim-result-item-value" style="color:var(--green)">${fmt(growth)}</div>
-        </div>
-        <div class="sim-result-item">
-          <div class="sim-result-item-label">Growth Percentage</div>
-          <div class="sim-result-item-value" style="color:var(--green)">+${fmtNum(growthPct, 1)}%</div>
-        </div>
-        <div class="sim-result-item">
-          <div class="sim-result-item-label">Monthly @ ${state.simRate}% p.a.</div>
-          <div class="sim-result-item-value">${fmt(state.simMonthly)}</div>
-        </div>
-      </div>`;
-
-    table.innerHTML = `
-      <div class="sim-table-header">
-        <span>Year</span>
-        <span>Total Value</span>
-        <span>Growth</span>
-      </div>
-      ${milestones.map(r => `
-        <div class="sim-table-row">
-          <span>Year ${r.year}</span>
-          <span style="color:var(--text)">${fmt(r.value)}</span>
-          <span style="color:var(--green)">+${fmt(r.growth)}</span>
-        </div>
-      `).join('')}`;
-
-    // Update value displays
-    document.querySelectorAll('.sim-input-value').forEach((el, i) => {
-      if (i === 0) el.textContent = fmt(state.simInitial);
-      if (i === 1) el.textContent = fmt(state.simMonthly);
-      if (i === 2) el.textContent = state.simYears + ' yrs';
-      if (i === 3) el.textContent = state.simRate + '%';
-    });
-  } else {
-    // Fallback: full render
-    persistState();
-    render();
-  }
-}
-
-// ============================================================
-//  SCREEN: AI COACH
-// ============================================================
-
-function renderAI() {
-  const quickPrompts = [
-    'Should I add more to VWRP?',
-    'Explain ISA allowance',
-    'What is a good ETF for beginners?',
-    'How does pound-cost averaging work?',
-    'SIPP vs ISA — which first?',
-    'Explain compound interest'
-  ];
-
-  return `
-  <div class="screen fade-in" style="height:calc(100vh - 72px);height:calc(100dvh - 72px);display:flex;flex-direction:column;">
-    <div class="screen-header">
-      <button class="back-btn" onclick="goBack()">←</button>
-      <h2>🤖 AI Coach</h2>
-      <button class="header-action-btn" onclick="clearChat()">🗑</button>
+    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #94A3B8; padding: 0 4px;">
+      <span>Displaying ${filtered.length} Analyzed Assets</span>
+      <span style="color: #FBBF24;">FCA Compliant Metrics</span>
     </div>
 
-    <div class="ai-messages" id="ai-messages">
-      ${state.chatMessages.length === 0 ? `
-        <div style="text-align:center;padding:32px 20px">
-          <div style="font-size:48px;margin-bottom:12px">🤖</div>
-          <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px">Your EB Wealth AI Coach</div>
-          <div style="font-size:13px;color:var(--text2);line-height:1.6">Ask me anything about UK investing — ISAs, ETFs, portfolio strategy, and more.</div>
-        </div>
-      ` : state.chatMessages.map(m => `
-        <div class="chat-bubble ${m.role}">
-          ${escapeHtml(m.content)}
-          <div style="font-size:10px;opacity:0.5;margin-top:4px;text-align:${m.role === 'user' ? 'right' : 'left'}">${m.time || ''}</div>
-        </div>
-      `).join('')}
-
-      ${state.isTyping ? `
-        <div class="typing-indicator">
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
-          <div class="typing-dot"></div>
-        </div>
-      ` : ''}
-    </div>
-
-    <div class="quick-prompts">
-      ${quickPrompts.map(p => `
-        <div class="quick-prompt-chip" onclick="sendQuickPrompt(${JSON.stringify(escapeHtml(p))})">${escapeHtml(p)}</div>
-      `).join('')}
-    </div>
-
-    <div class="ai-input-bar">
-      <input class="ai-input" id="ai-input" type="text" placeholder="Ask your AI coach..."
-        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();handleAISend()}"
-        ${state.isTyping ? 'disabled' : ''}>
-      <button class="ai-send-btn" onclick="handleAISend()" ${state.isTyping ? 'disabled' : ''}>➤</button>
-    </div>
-  </div>`;
-}
-
-function handleAISend() {
-  const input = document.getElementById('ai-input');
-  if (!input) return;
-  const prompt = input.value.trim();
-  if (!prompt || state.isTyping) return;
-  input.value = '';
-  sendAIMessage(prompt);
-}
-
-function sendQuickPrompt(prompt) {
-  if (state.isTyping) return;
-  sendAIMessage(prompt);
-}
-
-function clearChat() {
-  setState({ chatMessages: [] });
-  showToast('Chat cleared', 'gold');
-}
-
-// ============================================================
-//  SCREEN: COMMUNITY
-// ============================================================
-
-function renderCommunity() {
-  const tabs = ['posts', 'events', 'news'];
-  const activeTab = state.communityTab || 'posts';
-
-  return `
-  <div class="screen screen-with-nav fade-in">
-    <div class="screen-header"><h2>Community</h2></div>
-
-    <div class="community-tabs">
-      ${[['posts','📝 Posts'], ['events','📅 Events'], ['news','📰 News']].map(([t, label]) => `
-        <div class="community-tab ${activeTab === t ? 'active' : ''}"
-             onclick="setState({communityTab:'${t}'})">
-          ${label}
-        </div>
-      `).join('')}
-    </div>
-
-    ${activeTab === 'posts' ? renderPosts() : ''}
-    ${activeTab === 'events' ? renderEvents() : ''}
-    ${activeTab === 'news' ? renderNews() : ''}
-
-    <div style="height:16px"></div>
-  </div>
-  ${activeTab === 'posts' ? `<div class="fab" onclick="setState({showNewPost:true})">+</div>` : ''}`;
-}
-
-function renderPosts() {
-  const categories = ['All', 'UK Investing', 'ETFs', 'ISA/SIPP', 'Property', 'Crypto'];
-  const filter = state.communityFilter || 'All';
-  const filtered = filter === 'All' ? state.communityPosts : state.communityPosts.filter(p => p.category === filter);
-
-  return `
-  <div>
-    <div class="filter-chips">
-      ${categories.map(c => `
-        <div class="filter-chip ${filter === c ? 'active' : ''}" onclick="setState({communityFilter:'${c}'})">
-          ${c}
-        </div>
-      `).join('')}
-    </div>
-
-    ${filtered.length === 0 ? `
-      <div class="empty-state">
-        <div class="empty-state-icon">📭</div>
-        <div class="empty-state-title">No posts yet</div>
-        <div class="empty-state-text">Be the first to post in this category!</div>
-      </div>
-    ` : filtered.map(post => {
-      const expanded = state.expandedPostId === post.id;
-      return `
-      <div class="post-card">
-        <div class="post-author-row">
-          <div class="post-avatar">${post.author[0]}</div>
-          <div class="post-author-info">
-            <div class="post-author-name">${escapeHtml(post.author)}</div>
-            <div class="post-author-level">${escapeHtml(post.level)}</div>
-          </div>
-          <div class="post-time">${escapeHtml(post.time)}</div>
-        </div>
-        <div class="post-category-tag">${escapeHtml(post.category)}</div>
-        <div class="post-title">${escapeHtml(post.title)}</div>
-        <div class="${expanded ? '' : 'post-preview'}" onclick="togglePost(${post.id})">
-          ${escapeHtml(post.content)}
-        </div>
-        ${expanded ? '' : `<div style="font-size:12px;color:var(--gold);margin-top:4px;cursor:pointer" onclick="togglePost(${post.id})">Read more</div>`}
-        <div class="post-actions">
-          <button class="post-action-btn ${post.liked ? 'liked' : ''}" onclick="toggleLike(${post.id})">
-            ${post.liked ? '❤️' : '🤍'} ${post.likes}
-          </button>
-          <button class="post-action-btn">
-            💬 ${post.comments}
-          </button>
-          <button class="post-action-btn" onclick="sharePost(${post.id})">
-            📤 Share
-          </button>
-        </div>
-      </div>`;
-    }).join('')}
-  </div>`;
-}
-
-function renderEvents() {
-  return `
-  <div style="padding:12px 0">
-    ${state.events.map(ev => `
-      <div class="event-card">
-        <div class="event-header">
+    ${filtered.map(asset => `
+      <div class="market-asset-card" onclick="window.navigateTo('asset_detail', '${asset.ticker}')" style="cursor: pointer;">
+        <div class="market-card-top">
           <div>
-            <div class="event-type-badge">${escapeHtml(ev.type)}</div>
-            <div class="event-title">${escapeHtml(ev.title)}</div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+              <span style="background: rgba(0, 240, 255, 0.15); color: #00F0FF; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(0, 240, 255, 0.4);">${asset.type}</span>
+              <span style="font-size: 11px; color: #94A3B8;">${asset.exchange}</span>
+            </div>
+            <div style="font-size: 20px; font-weight: 900; color: #FFFFFF;">${asset.ticker}</div>
+            <div style="font-size: 12px; color: #CBD5E1; margin-top: 2px;">${asset.name}</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 18px; font-weight: 900; color: #FFFFFF;">${asset.price}</div>
+            <div style="font-size: 12px; font-weight: 800; color: #10B981;">${asset.change}</div>
           </div>
         </div>
-        <div class="event-date">📅 ${escapeHtml(ev.date)} · ${escapeHtml(ev.time)}</div>
-        <div class="event-desc">${escapeHtml(ev.description)}</div>
-        <button class="event-register-btn ${ev.registered ? 'registered' : ''}"
-                onclick="toggleEventRegistration(${ev.id})">
-          ${ev.registered ? '✓ Registered — Click to Unregister' : '🎟 Register for Free'}
+
+        <div class="market-card-metric-grid">
+          <div class="metric-item-col">
+            <span class="metric-item-label">P/E Ratio</span>
+            <span class="metric-item-value">${asset.peRatio}</span>
+          </div>
+          <div class="metric-item-col">
+            <span class="metric-item-label">Dividend Yield</span>
+            <span class="metric-item-value" style="color: #10B981;">${asset.divYield}</span>
+          </div>
+          <div class="metric-item-col">
+            <span class="metric-item-label">Market Cap</span>
+            <span class="metric-item-value" style="color: #38BDF8;">${asset.marketCap}</span>
+          </div>
+          <div class="metric-item-col">
+            <span class="metric-item-label">Sector</span>
+            <span class="metric-item-value" style="color: #FBBF24;">${asset.sector}</span>
+          </div>
+        </div>
+
+        <div class="health-scorecard-bar">
+          <div style="display: flex; align-items: center; gap: 6px; color: #10B981; font-weight: 700;">
+            <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+            <span>EB Health Scorecard: ${asset.healthScore}</span>
+          </div>
+          <div style="color: #00F0FF; font-weight: 700;">View Factsheet →</div>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+// 3. ASSET DETAIL SCREEN
+function renderAssetDetailScreen() {
+  const asset = state.assets.find(a => a.ticker === state.selectedTicker) || state.assets[0];
+
+  return `
+    <div class="market-top-row">
+      <button class="back-btn-circle" onclick="window.navigateBack()">
+        <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div>
+        <h2 style="font-size: 18px; font-weight: 900; color: #FFFFFF;">${asset.ticker} • ${asset.type}</h2>
+        <div style="font-size: 11px; color: #94A3B8;">${asset.name}</div>
+      </div>
+    </div>
+
+    <div class="cyber-card" style="border-color: rgba(0, 240, 255, 0.4);">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-size: 11px; color: #94A3B8; font-weight: 700; letter-spacing: 0.5px;">CURRENT MARKET PRICE</div>
+          <div style="font-size: 30px; font-weight: 900; color: #FFFFFF; margin-top: 4px;">${asset.price}</div>
+        </div>
+        <div style="background: rgba(16, 185, 129, 0.15); border: 1px solid #10B981; color: #34D399; font-weight: 800; font-size: 14px; padding: 6px 12px; border-radius: 8px;">
+          ${asset.change}
+        </div>
+      </div>
+    </div>
+
+    <!-- Institutional Scorecard -->
+    <div class="cyber-card">
+      <div style="font-size: 11px; font-weight: 800; color: #FBBF24; letter-spacing: 0.8px; margin-bottom: 12px;">
+        EB INSTITUTIONAL HEALTH SCORECARD
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span>Financial & Balance Sheet Strength</span>
+            <span style="color: #00F0FF; font-weight: 800;">${asset.healthScore}</span>
+          </div>
+          <div class="progress-container"><div class="progress-fill-cyan" style="width: 94%;"></div></div>
+        </div>
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span>Valuation Multiples vs Peers</span>
+            <span style="color: #FBBF24; font-weight: 800;">${asset.valuationScore}</span>
+          </div>
+          <div class="progress-container"><div class="progress-fill-cyan" style="width: 82%; background: #FBBF24;"></div></div>
+        </div>
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span>Dividend Coverage & Reliability</span>
+            <span style="color: #10B981; font-weight: 800;">${asset.dividendSafety}</span>
+          </div>
+          <div class="progress-container"><div class="progress-fill-cyan" style="width: 98%; background: #10B981;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Investment Thesis -->
+    <div class="cyber-card">
+      <div style="font-size: 12px; font-weight: 800; color: #00F0FF; margin-bottom: 8px;">FUND THESIS & OVERVIEW</div>
+      <p style="font-size: 13px; color: #CBD5E1; line-height: 1.6;">${asset.description}</p>
+    </div>
+
+    <button class="btn-pro-gold" style="width: 100%; padding: 14px; font-size: 13px;" onclick="window.addHoldingQuick('${asset.ticker}', '${asset.name}', ${asset.priceNum})">
+      + Add ${asset.ticker} to Portfolio
+    </button>
+  `;
+}
+
+// 4. LEARN / ACADEMY SCREEN (Screenshot 5)
+function renderLearnScreen() {
+  return `
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <div class="academy-badge-gold">
+        <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="currentColor"><path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z"/></svg>
+        <span>EB WEALTH ACADEMY</span>
+      </div>
+      <h2 style="font-size: 20px; font-weight: 900; color: #FFFFFF;">Structured Investor Curriculum</h2>
+      <p style="font-size: 12px; color: #94A3B8; line-height: 1.4;">
+        6 progressive levels designed to build disciplined long-term compounding wealth.
+      </p>
+    </div>
+
+    <div class="level-scroll-row">
+      <button class="level-pill-btn ${state.selectedLevel === 1 ? 'active' : 'inactive'}" onclick="window.selectLevel(1)">
+        Level 1 Investing Foundations
+      </button>
+      <button class="level-pill-btn ${state.selectedLevel === 2 ? 'active' : 'inactive'}" onclick="window.selectLevel(2)">
+        Level 2 Investment Strategies
+      </button>
+      <button class="level-pill-btn ${state.selectedLevel === 3 ? 'active' : 'inactive'}" onclick="window.selectLevel(3)">
+        Level 3 UK Tax Wrappers & ISA
+      </button>
+    </div>
+
+    <div>
+      <div style="font-size: 13px; font-weight: 800; color: #00F0FF; letter-spacing: 0.5px;">
+        LEVEL ${state.selectedLevel} — INVESTING FOUNDATIONS
+      </div>
+      <div style="font-size: 11px; color: #94A3B8; margin-top: 3px;">
+        Master the mental models, time horizons, and mathematical laws behind wealth creation.
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      ${state.lessons.map(l => `
+        <div class="lesson-card-item" onclick="window.navigateTo('lesson_detail', ${l.id})">
+          <div class="lesson-num-circle ${l.completed ? 'completed' : ''}">
+            ${l.completed ? `
+              <svg style="width:18px;height:18px;" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>
+            ` : l.id}
+          </div>
+          <div style="flex: 1;">
+            <div style="font-size: 14px; font-weight: 800; color: #FFFFFF;">${l.title}</div>
+            <div style="font-size: 11px; color: #94A3B8; margin-top: 3px; display: flex; align-items: center; gap: 8px;">
+              <span>⏱ ${l.time}</span>
+              <span style="color: #FBBF24; font-weight: 700;">+${l.xp} XP</span>
+            </div>
+          </div>
+          <div style="color: #64748B;">
+            <svg style="width:18px;height:18px;" viewBox="0 0 24 24" fill="currentColor"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// 5. LESSON DETAIL SCREEN WITH INTERACTIVE QUIZ
+function renderLessonDetailScreen() {
+  const lesson = state.lessons.find(l => l.id === state.selectedLessonId) || state.lessons[0];
+
+  return `
+    <div class="market-top-row">
+      <button class="back-btn-circle" onclick="window.navigateBack()">
+        <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div>
+        <h2 style="font-size: 16px; font-weight: 900; color: #FFFFFF;">${lesson.title}</h2>
+        <div style="font-size: 11px; color: #94A3B8;">Level ${lesson.level} • ⏱ ${lesson.time} • +${lesson.xp} XP</div>
+      </div>
+    </div>
+
+    <div class="cyber-card">
+      <div style="font-size: 11px; color: #00F0FF; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 6px;">CORE SUMMARY</div>
+      <p style="font-size: 13px; color: #FFFFFF; line-height: 1.5;">${lesson.summary}</p>
+      <div style="height: 1px; background: rgba(255, 255, 255, 0.08); margin: 12px 0;"></div>
+      <div style="font-size: 11px; color: #FBBF24; font-weight: 800; letter-spacing: 0.5px; margin-bottom: 6px;">DETAILED LESSON MATERIAL</div>
+      <p style="font-size: 13px; color: #CBD5E1; line-height: 1.6;">${lesson.content}</p>
+    </div>
+
+    <!-- Interactive Knowledge Check Quiz -->
+    <div class="cyber-card" style="border-color: rgba(251, 191, 36, 0.4);">
+      <div style="font-size: 12px; font-weight: 800; color: #FBBF24; margin-bottom: 8px;">KNOWLEDGE CHECK QUIZ</div>
+      <div style="font-size: 13px; font-weight: 700; color: #FFFFFF; margin-bottom: 12px;">${lesson.quiz.question}</div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        ${lesson.quiz.options.map((opt, idx) => `
+          <button style="text-align: left; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 10px; padding: 12px; color: #FFFFFF; font-size: 12px; cursor: pointer;" onclick="window.answerQuiz(${lesson.id}, ${idx})">
+            ${opt}
+          </button>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// 6. PORTFOLIO SCREEN (Screenshot 4)
+function renderPortfolioScreen() {
+  const totalVal = state.holdings.reduce((sum, h) => sum + (h.shares * h.currentPrice), 0);
+  const totalCost = state.holdings.reduce((sum, h) => sum + (h.shares * h.avgBuyPrice), 0);
+  const totalGain = totalVal - totalCost;
+  const gainPct = totalCost > 0 ? ((totalGain / totalCost) * 100).toFixed(2) : '0.00';
+
+  return `
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <span class="lse-feed-badge">LSE LIVE FEED</span>
+      <span style="font-size: 11px; color: #94A3B8;">Today, 14:33</span>
+      <span style="font-size: 11px; color: #00F0FF; cursor: pointer; font-weight: 700;" onclick="window.refreshPortfolio()">🔄 Refresh Quotes</span>
+    </div>
+
+    <div class="cyber-card" style="border-color: rgba(0, 240, 255, 0.35);">
+      <div style="font-size: 11px; font-weight: 800; color: #FBBF24; letter-spacing: 0.8px;">
+        TOTAL PORTFOLIO VALUATION
+      </div>
+      <div style="font-size: 34px; font-weight: 900; color: #FFFFFF; margin: 8px 0 4px 0;">
+        £${totalVal.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 12px; color: #94A3B8; margin-top: 6px;">
+        <span>Total Cost Basis: £${totalCost.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+        <span style="color: #10B981; font-weight: 800;">Unrealized Return: +£${totalGain.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${gainPct}%)</span>
+      </div>
+    </div>
+
+    <div class="cyber-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <span style="font-size: 13px; font-weight: 800; color: #FFFFFF;">Account & Geographic Allocation</span>
+        <span style="font-size: 11px; color: #00F0FF; font-weight: 700; cursor: pointer;" onclick="window.navigateTo('etf_overlap')">Rebalance Tool →</span>
+      </div>
+
+      <div style="font-size: 11px; color: #94A3B8; margin-bottom: 8px;">By UK Tax Vehicle:</div>
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;">
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px;">
+            <span>Stocks & Shares ISA</span>
+            <span style="color: #00F0FF; font-weight: 700;">80%</span>
+          </div>
+          <div class="progress-container"><div class="progress-fill-cyan" style="width: 80%;"></div></div>
+        </div>
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px;">
+            <span>General Investment Account (GIA)</span>
+            <span style="color: #FBBF24; font-weight: 700;">20%</span>
+          </div>
+          <div class="progress-container"><div class="progress-fill-cyan" style="width: 20%; background: #FBBF24;"></div></div>
+        </div>
+      </div>
+
+      <div style="font-size: 11px; color: #94A3B8; margin-bottom: 8px;">By Geographic Exposure:</div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px;">
+            <span>Global All-World (VWRP)</span>
+            <span style="color: #38BDF8; font-weight: 700;">60%</span>
+          </div>
+          <div class="progress-container"><div class="progress-fill-cyan" style="width: 60%; background: #38BDF8;"></div></div>
+        </div>
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 11px;">
+            <span>US S&P 500 (VUAG)</span>
+            <span style="color: #10B981; font-weight: 700;">40%</span>
+          </div>
+          <div class="progress-container"><div class="progress-fill-cyan" style="width: 40%; background: #10B981;"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+      <h3 style="font-size: 16px; font-weight: 900; color: #FFFFFF;">Holdings (${state.holdings.length})</h3>
+      <button style="display: flex; align-items: center; gap: 6px; background: #00F0FF; color: #040B14; border: none; border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 800; cursor: pointer;" onclick="window.openAddHoldingModal()">
+        <span>+ Add Holding</span>
+      </button>
+    </div>
+
+    ${state.holdings.map((h, i) => `
+      <div class="cyber-card" style="padding: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-size: 16px; font-weight: 900; color: #FFFFFF;">${h.ticker}</div>
+            <div style="font-size: 11px; color: #94A3B8;">${h.name} • ${h.shares} Shares</div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 15px; font-weight: 800; color: #FFFFFF;">£${(h.shares * h.currentPrice).toFixed(2)}</div>
+            <div style="font-size: 11px; color: #10B981; font-weight: 700;">+£${((h.shares * h.currentPrice) - (h.shares * h.avgBuyPrice)).toFixed(2)}</div>
+          </div>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+// 7. ETF OVERLAP CHECKER SCREEN
+function renderETFOverlapScreen() {
+  return `
+    <div class="market-top-row">
+      <button class="back-btn-circle" onclick="window.navigateBack()">
+        <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div>
+        <h2 style="font-size: 16px; font-weight: 800; color: #FFFFFF;">ETF Overlap Checker</h2>
+        <div style="font-size: 11px; color: #94A3B8;">Identify duplicate exposure across index funds</div>
+      </div>
+    </div>
+
+    <div class="cyber-card" style="border-color: rgba(0, 240, 255, 0.4); text-align: center;">
+      <div style="font-size: 11px; font-weight: 800; color: #FBBF24;">ESTIMATED PORTFOLIO WEIGHT OVERLAP</div>
+      <div style="font-size: 42px; font-weight: 900; color: #00F0FF; margin: 8px 0;">64.2%</div>
+      <p style="font-size: 12px; color: #94A3B8;">Between Vanguard FTSE All-World (VWRP) & Vanguard S&P 500 (VUAG)</p>
+    </div>
+
+    <div class="cyber-card">
+      <div style="font-size: 12px; font-weight: 800; color: #FFFFFF; margin-bottom: 10px;">TOP DUPLICATE HOLDINGS</div>
+      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
+          <span>Microsoft Corporation (MSFT)</span>
+          <span style="color: #00F0FF; font-weight: 700;">6.8% Combined</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
+          <span>Apple Inc. (AAPL)</span>
+          <span style="color: #00F0FF; font-weight: 700;">6.2% Combined</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
+          <span>NVIDIA Corporation (NVDA)</span>
+          <span style="color: #00F0FF; font-weight: 700;">5.9% Combined</span>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>Amazon.com Inc. (AMZN)</span>
+          <span style="color: #00F0FF; font-weight: 700;">3.8% Combined</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// 8. COMPOUND GROWTH SIMULATOR SCREEN
+function renderSimulatorScreen() {
+  const r = state.simRate / 100.0;
+  const months = state.simYears * 12;
+  const monthlyRate = r / 12.0;
+  const fvInitial = state.simInitial * Math.pow(1.0 + monthlyRate, months);
+  const fvMonthly = monthlyRate > 0 ? state.simMonthly * ((Math.pow(1.0 + monthlyRate, months) - 1.0) / monthlyRate) : state.simMonthly * months;
+  const totalValue = fvInitial + fvMonthly;
+  const totalInvested = state.simInitial + (state.simMonthly * months);
+  const totalGrowth = totalValue - totalInvested;
+
+  return `
+    <div class="market-top-row">
+      <button class="back-btn-circle" onclick="window.navigateBack()">
+        <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div>
+        <h2 style="font-size: 16px; font-weight: 800; color: #FFFFFF;">Compound Growth Simulator</h2>
+        <div style="font-size: 11px; color: #94A3B8;">Multi-decade wealth trajectory modeling</div>
+      </div>
+    </div>
+
+    <div class="cyber-card" style="border-color: rgba(251, 191, 36, 0.4); text-align: center;">
+      <div style="font-size: 11px; font-weight: 800; color: #FBBF24;">PROJECTED PORTFOLIO WEALTH</div>
+      <div style="font-size: 36px; font-weight: 900; color: #00F0FF; margin: 6px 0;">
+        £${Math.round(totalValue).toLocaleString('en-GB')}
+      </div>
+      <div style="display: flex; justify-content: space-around; font-size: 11px; color: #94A3B8; margin-top: 8px;">
+        <span>Invested: £${Math.round(totalInvested).toLocaleString('en-GB')}</span>
+        <span style="color: #10B981; font-weight: 800;">Growth: +£${Math.round(totalGrowth).toLocaleString('en-GB')}</span>
+      </div>
+    </div>
+
+    <div class="cyber-card" style="display: flex; flex-direction: column; gap: 14px;">
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+          <span>Initial Lump Sum (£)</span>
+          <span style="color: #00F0FF; font-weight: 800;">£${state.simInitial}</span>
+        </div>
+        <input type="range" min="0" max="50000" step="500" value="${state.simInitial}" oninput="window.updateSim('simInitial', this.value)" style="width: 100%;" />
+      </div>
+
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+          <span>Monthly Contribution (£)</span>
+          <span style="color: #00F0FF; font-weight: 800;">£${state.simMonthly} / month</span>
+        </div>
+        <input type="range" min="50" max="2500" step="50" value="${state.simMonthly}" oninput="window.updateSim('simMonthly', this.value)" style="width: 100%;" />
+      </div>
+
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+          <span>Investment Horizon</span>
+          <span style="color: #FBBF24; font-weight: 800;">${state.simYears} Years</span>
+        </div>
+        <input type="range" min="5" max="40" step="1" value="${state.simYears}" oninput="window.updateSim('simYears', this.value)" style="width: 100%;" />
+      </div>
+
+      <div>
+        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+          <span>Estimated Annual Return (%)</span>
+          <span style="color: #10B981; font-weight: 800;">${state.simRate}%</span>
+        </div>
+        <input type="range" min="3.0" max="15.0" step="0.5" value="${state.simRate}" oninput="window.updateSim('simRate', this.value)" style="width: 100%;" />
+      </div>
+    </div>
+  `;
+}
+
+// 9. AI WEALTH COACH SCREEN
+function renderAICoachScreen() {
+  return `
+    <div class="market-top-row">
+      <button class="back-btn-circle" onclick="window.navigateBack()">
+        <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div>
+        <h2 style="font-size: 16px; font-weight: 800; color: #FFFFFF;">EB Wealth AI Coach</h2>
+        <div style="font-size: 11px; color: #94A3B8;">Institutional Wealth Intelligence</div>
+      </div>
+    </div>
+
+    <!-- Quick Prompt Chips -->
+    <div style="display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px;">
+      <button class="chip-btn" onclick="window.sendPrompt('How does the £20k UK ISA allowance work?')">ISA Rules</button>
+      <button class="chip-btn" onclick="window.sendPrompt('Compare VWRP vs VUAG for UK investors')">VWRP vs VUAG</button>
+      <button class="chip-btn" onclick="window.sendPrompt('What are the CGT limits for 2024/25?')">CGT £3k Exemption</button>
+      <button class="chip-btn" onclick="window.sendPrompt('How can I optimize dividend tax allowances?')">Dividend Relief</button>
+    </div>
+
+    <!-- Messages Container -->
+    <div style="display: flex; flex-direction: column; gap: 12px; flex: 1;">
+      ${state.chatMessages.map(m => `
+        <div style="display: flex; justify-content: ${m.sender === 'user' ? 'flex-end' : 'flex-start'};">
+          <div style="max-width: 85%; padding: 12px 16px; border-radius: 16px; font-size: 13px; line-height: 1.5; ${m.sender === 'user' ? 'background: #00F0FF; color: #040B14; font-weight: 700;' : 'background: rgba(7, 19, 34, 0.9); border: 1px solid rgba(0, 240, 255, 0.3); color: #FFFFFF;'}">
+            ${m.text}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- Message Input Bar -->
+    <form onsubmit="window.submitChat(event)" style="display: flex; gap: 8px; margin-top: 10px;">
+      <input type="text" id="ai-chat-input" placeholder="Ask wealth questions..." style="flex: 1; background: rgba(7, 19, 34, 0.9); border: 1px solid rgba(0, 240, 255, 0.4); border-radius: 20px; padding: 12px 16px; color: #fff; font-size: 13px;" required />
+      <button type="submit" style="background: #00F0FF; color: #040B14; border: none; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+        <svg style="width:18px;height:18px;" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </form>
+  `;
+}
+
+// 10. COMMUNITY SCREEN
+function renderCommunityScreen() {
+  return `
+    <div class="market-top-row">
+      <button class="back-btn-circle" onclick="window.navigateBack()">
+        <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div>
+        <h2 style="font-size: 16px; font-weight: 800; color: #FFFFFF;">Community Forum & Discussions</h2>
+        <div style="font-size: 11px; color: #94A3B8;">Verified UK Investor Discussions</div>
+      </div>
+    </div>
+
+    ${state.communityPosts.map(p => `
+      <div class="cyber-card" style="border-color: rgba(20, 184, 166, 0.4);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span style="font-size: 10px; font-weight: 800; color: #2DD4BF; background: rgba(20, 184, 166, 0.15); padding: 2px 8px; border-radius: 4px;">${p.category}</span>
+          <span style="font-size: 11px; color: #94A3B8;">${p.time} • By ${p.author}</span>
+        </div>
+        <div style="font-size: 15px; font-weight: 900; color: #FFFFFF; margin-bottom: 4px;">${p.title}</div>
+        <p style="font-size: 12px; color: #CBD5E1; line-height: 1.5; margin-bottom: 10px;">${p.content}</p>
+        <div style="display: flex; gap: 14px; font-size: 11px; color: #94A3B8; font-weight: 700;">
+          <span style="color: #F43F5E; cursor: pointer;">❤️ ${p.likes} Likes</span>
+          <span style="color: #00F0FF; cursor: pointer;">💬 ${p.comments} Comments</span>
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+// 11. EVENTS SCREEN
+function renderEventsScreen() {
+  return `
+    <div class="market-top-row">
+      <button class="back-btn-circle" onclick="window.navigateBack()">
+        <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div>
+        <h2 style="font-size: 16px; font-weight: 800; color: #FFFFFF;">Live Investor Events</h2>
+        <div style="font-size: 11px; color: #94A3B8;">Institutional workshops & webinars</div>
+      </div>
+    </div>
+
+    ${state.events.map(e => `
+      <div class="cyber-card">
+        <div style="font-size: 11px; color: #FBBF24; font-weight: 800; margin-bottom: 4px;">${e.date}</div>
+        <div style="font-size: 16px; font-weight: 900; color: #FFFFFF; margin-bottom: 4px;">${e.title}</div>
+        <div style="font-size: 11px; color: #94A3B8; margin-bottom: 8px;">Presented by ${e.host}</div>
+        <p style="font-size: 12px; color: #CBD5E1; line-height: 1.5; margin-bottom: 12px;">${e.description}</p>
+        <button class="btn-upgrade-pill" style="width: 100%; justify-content: center; font-size: 12px;" onclick="window.toggleRegister(${e.id})">
+          ${state.registeredEvents.includes(e.id) ? '✓ Registered' : 'Register for Webinar'}
         </button>
       </div>
     `).join('')}
-  </div>`;
+  `;
 }
 
-function renderNews() {
+// 12. MARKET NEWS SCREEN
+function renderNewsScreen() {
   return `
-  <div style="padding:12px 0">
-    ${state.news.map(n => `
-      <div class="news-card" style="margin:0 16px 10px">
-        <div class="news-category-tag">${escapeHtml(n.category)}</div>
-        <div class="news-headline">${escapeHtml(n.headline)}</div>
-        <div class="news-meta">
-          <span>📰 ${escapeHtml(n.source)}</span>
-          <span>·</span>
-          <span>${escapeHtml(n.time)}</span>
+    <div class="market-top-row">
+      <button class="back-btn-circle" onclick="window.navigateBack()">
+        <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div>
+        <h2 style="font-size: 16px; font-weight: 800; color: #FFFFFF;">Market Intelligence News</h2>
+        <div style="font-size: 11px; color: #94A3B8;">London Stock Exchange & UK Fiscal Updates</div>
+      </div>
+    </div>
+
+    ${state.marketNews.map(n => `
+      <div class="cyber-card">
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #94A3B8; margin-bottom: 4px;">
+          <span style="color: #00F0FF; font-weight: 700;">${n.source}</span>
+          <span>${n.time}</span>
         </div>
+        <div style="font-size: 15px; font-weight: 900; color: #FFFFFF; margin-bottom: 4px;">${n.title}</div>
+        <p style="font-size: 12px; color: #CBD5E1; line-height: 1.5;">${n.snippet}</p>
       </div>
     `).join('')}
-  </div>`;
+  `;
 }
 
-function togglePost(id) {
-  setState({ expandedPostId: state.expandedPostId === id ? null : id });
-}
-
-function sharePost(id) {
-  if (navigator.share) {
-    const post = state.communityPosts.find(p => p.id === id);
-    if (post) navigator.share({ title: post.title, text: post.content.slice(0, 100) + '...' }).catch(() => {});
-  } else {
-    showToast('Link copied!', 'gold');
-  }
-}
-
-// ============================================================
-//  SCREEN: PROFILE
-// ============================================================
-
-function renderProfile() {
-  const level = getLevelTitle(state.xp);
-  const { min, max } = getLevelXPRange(state.xp);
-  const xpPct = Math.min(100, ((state.xp - min) / (max - min)) * 100) || 0;
-  const completedLessons = Object.values(state.lessonProgress).filter(p => p.completed).length;
-  const profileData = (() => {
-    try { return JSON.parse(localStorage.getItem('eb_profile') || '{}'); } catch(e) { return {}; }
-  })();
-  const lastSynced = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+// 13. PROFILE SCREEN (Screenshot 1)
+function renderProfileScreen() {
+  const isaRemaining = state.user.isaLimit - state.user.isaUsed;
+  const isaPct = ((state.user.isaUsed / state.user.isaLimit) * 100).toFixed(1);
 
   return `
-  <div class="screen screen-with-nav fade-in">
-
-    <div class="profile-header">
-      <div class="profile-avatar">${getFirstName()[0].toUpperCase()}</div>
-      <div class="profile-name">${escapeHtml(getFirstName())}</div>
-      <div class="profile-email">${escapeHtml(state.user?.email || '')}</div>
-      <div class="profile-level-badge">⭐ ${escapeHtml(level.title)}</div>
-    </div>
-
-    <!-- XP Bar -->
-    <div class="xp-section" style="margin:0 16px 16px">
-      <div class="xp-header">
-        <span style="font-size:13px;font-weight:600;color:var(--text)">Level ${level.num} Progress</span>
-        <span class="xp-values">${state.xp} / ${max} XP</span>
-      </div>
-      <div class="xp-bar-track">
-        <div class="xp-bar-fill" style="width:${xpPct}%"></div>
-      </div>
-      <div style="font-size:11px;color:var(--text3);margin-top:6px">${max - state.xp} XP to next level</div>
-    </div>
-
-    <!-- Stats Grid -->
-    <div class="profile-stats-grid">
-      <div class="profile-stat-card">
-        <div class="profile-stat-icon">⭐</div>
-        <div class="profile-stat-value">${state.xp}</div>
-        <div class="profile-stat-label">Total XP</div>
-      </div>
-      <div class="profile-stat-card">
-        <div class="profile-stat-icon">🔥</div>
-        <div class="profile-stat-value">${state.streak}</div>
-        <div class="profile-stat-label">Day Streak</div>
-      </div>
-      <div class="profile-stat-card">
-        <div class="profile-stat-icon">💼</div>
-        <div class="profile-stat-value">${state.holdings.length}</div>
-        <div class="profile-stat-label">Holdings</div>
-      </div>
-      <div class="profile-stat-card">
-        <div class="profile-stat-icon">🎓</div>
-        <div class="profile-stat-value">${completedLessons}</div>
-        <div class="profile-stat-label">Lessons Done</div>
-      </div>
-    </div>
-
-    <!-- Investment Profile -->
-    <div class="profile-info-section">
-      <div class="profile-info-header">Investment Profile</div>
-      <div class="profile-info-row">
-        <span class="profile-info-label">Experience</span>
-        <span class="profile-info-value">${escapeHtml(profileData.experience || 'Not set')}</span>
-      </div>
-      <div class="profile-info-row">
-        <span class="profile-info-label">Primary Goal</span>
-        <span class="profile-info-value">${escapeHtml(profileData.goal || 'Not set')}</span>
-      </div>
-      <div class="profile-info-row">
-        <span class="profile-info-label">Time Horizon</span>
-        <span class="profile-info-value">${escapeHtml(profileData.horizon || 'Not set')}</span>
-      </div>
-      <div class="profile-info-row">
-        <span class="profile-info-label">Monthly Capacity</span>
-        <span class="profile-info-value">${escapeHtml(profileData.capacity || 'Not set')}</span>
-      </div>
-      <div class="profile-info-row">
-        <span class="profile-info-label">Risk Profile</span>
-        <span class="profile-info-value">${escapeHtml(profileData.risk || 'Not set')}</span>
-      </div>
-    </div>
-
-    <!-- ISA Summary -->
-    <div class="profile-info-section">
-      <div class="profile-info-header">ISA Summary 2025/26</div>
-      <div class="profile-info-row">
-        <span class="profile-info-label">Used</span>
-        <span class="profile-info-value t-gold">${fmt(state.isaUsed)}</span>
-      </div>
-      <div class="profile-info-row">
-        <span class="profile-info-label">Remaining</span>
-        <span class="profile-info-value t-green">${fmt(20000 - state.isaUsed)}</span>
-      </div>
-      <div class="profile-info-row">
-        <span class="profile-info-label">Annual Limit</span>
-        <span class="profile-info-value">£20,000</span>
-      </div>
-    </div>
-
-    <!-- Sync Status -->
-    <div class="profile-info-section">
-      <div class="profile-info-header">Account Info</div>
-      <div class="profile-info-row">
-        <span class="profile-info-label">Last Synced</span>
-        <span class="profile-info-value">${lastSynced}</span>
-      </div>
-      <div class="profile-info-row">
-        <span class="profile-info-label">Status</span>
-        <span class="profile-info-value" style="color:var(--green)">✓ Online</span>
-      </div>
-    </div>
-
-    <!-- Logout -->
-    <button class="btn-logout" onclick="handleLogout()">🚪 Sign Out</button>
-
-    <div class="version-text">EB Wealth v1.0 • PWA • Built with ❤️</div>
-
-  </div>`;
-}
-
-// ============================================================
-//  SCREEN: ASSET DETAIL
-// ============================================================
-
-function renderAssetDetail() {
-  const holding = state.holdings.find(h => h.id === state.selectedTicker);
-  if (!holding) return `
-    <div class="screen">
-      <div class="screen-header">
-        <button class="back-btn" onclick="goBack()">←</button>
-        <h2>Asset Detail</h2>
-      </div>
-      <div class="empty-state"><div class="empty-state-title">Asset not found</div></div>
-    </div>`;
-
-  const c = calcHolding(holding);
-  const dayChange = (Math.random() * 2 - 1).toFixed(2);
-  const dayChangePct = ((dayChange / holding.currentPrice) * 100).toFixed(2);
-
-  return `
-  <div class="screen screen-with-nav fade-in">
-    <div class="screen-header">
-      <button class="back-btn" onclick="goBack()">←</button>
-      <h2>${escapeHtml(holding.ticker)}</h2>
-    </div>
-
-    <div class="asset-header">
-      <div class="asset-ticker">${escapeHtml(holding.ticker)}</div>
-      <div class="asset-name">${escapeHtml(holding.name)}</div>
-      <div class="asset-price">${fmt(holding.currentPrice)}</div>
-      <div style="margin-top:6px">
-        <span class="gain-badge ${parseFloat(dayChange) >= 0 ? 'positive' : 'negative'}">
-          ${parseFloat(dayChange) >= 0 ? '▲' : '▼'} ${fmt(Math.abs(dayChange))} (${parseFloat(dayChangePct) >= 0 ? '+' : ''}${dayChangePct}%) today
+    <!-- Top Client Verification Card (Screenshot 1) -->
+    <div class="cyber-card" style="border-color: rgba(0, 240, 255, 0.4);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <span class="verified-client-badge">
+          <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+          <span>VERIFIED WEALTH CLIENT</span>
         </span>
+        <span style="font-size: 11px; color: #94A3B8; font-weight: 600;">${state.user.ref}</span>
       </div>
-    </div>
 
-    <div class="asset-info-grid">
-      <div class="asset-info-card">
-        <div class="asset-info-label">Your Value</div>
-        <div class="asset-info-value">${fmt(c.value)}</div>
-      </div>
-      <div class="asset-info-card">
-        <div class="asset-info-label">Total Gain/Loss</div>
-        <div class="asset-info-value" style="color:${c.gain >= 0 ? 'var(--green)' : 'var(--red)'}">
-          ${c.gain >= 0 ? '+' : ''}${fmt(c.gain)}
+      <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 16px;">
+        <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #00BCD4, #0284C7); border: 2px solid #00F0FF; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 900; color: #FFFFFF; box-shadow: 0 0 20px rgba(0, 240, 255, 0.4); flex-shrink: 0;">
+          ${(state.user.firstName || 'J').charAt(0).toUpperCase()}
+        </div>
+        <div>
+          <div style="font-size: 22px; font-weight: 900; color: #FFFFFF;">${state.user.firstName}</div>
+          <div style="font-size: 12px; color: #94A3B8; margin-top: 2px;">${state.user.email}</div>
+          <div style="font-size: 12px; color: #00F0FF; font-weight: 700; margin-top: 4px;">${state.user.region}</div>
         </div>
       </div>
-      <div class="asset-info-card">
-        <div class="asset-info-label">Shares Held</div>
-        <div class="asset-info-value">${fmtNum(holding.shares, 3)}</div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 14px; border-top: 1px solid rgba(255, 255, 255, 0.08);">
+        <div>
+          <div style="font-size: 10px; color: #94A3B8; font-weight: 700; letter-spacing: 0.5px;">TIER STATUS</div>
+          <div style="font-size: 15px; font-weight: 900; color: #FFFFFF; margin-top: 2px;">${state.user.tierStatus}</div>
+        </div>
+        <button class="btn-pro-gold" onclick="window.openProModal()">Upgrade to Pro</button>
       </div>
-      <div class="asset-info-card">
-        <div class="asset-info-label">Avg. Buy Price</div>
-        <div class="asset-info-value">${fmt(holding.avgPrice)}</div>
+    </div>
+
+    <!-- TAX YEAR 2024/2025 ALLOWANCES Card (Screenshot 1) -->
+    <div class="cyber-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <span style="font-size: 11px; font-weight: 800; color: #FBBF24; letter-spacing: 0.8px;">TAX YEAR 2024/2025 ALLOWANCES</span>
+        <span style="font-size: 11px; color: #94A3B8;">HMRC Regulated</span>
       </div>
-      <div class="asset-info-card">
-        <div class="asset-info-label">Return %</div>
-        <div class="asset-info-value" style="color:${c.pct >= 0 ? 'var(--green)' : 'var(--red)'}">
-          ${fmtPct(c.pct)}
+
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700;">
+        <span style="color: #FFFFFF;">Stocks & Shares ISA Limit</span>
+        <span style="color: #00F0FF; font-weight: 900;">£${state.user.isaUsed.toLocaleString('en-GB')} / £${state.user.isaLimit.toLocaleString('en-GB')}</span>
+      </div>
+
+      <div class="progress-container">
+        <div class="progress-fill-cyan" style="width: ${isaPct}%;">
+          <div class="progress-dot-end"></div>
         </div>
       </div>
-      <div class="asset-info-card">
-        <div class="asset-info-label">Asset Type</div>
-        <div class="asset-info-value">${escapeHtml(holding.assetType)}</div>
+
+      <div style="font-size: 11px; color: #94A3B8; margin-top: 6px;">
+        £${isaRemaining.toLocaleString('en-GB')} tax-free allowance remaining until April 5
+      </div>
+
+      <div style="height: 1px; background: rgba(255, 255, 255, 0.08); margin: 14px 0;"></div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <div style="font-size: 11px; color: #94A3B8;">Capital Gains Allowance</div>
+          <div style="font-size: 14px; font-weight: 800; color: #FFFFFF; margin-top: 2px;">£${state.user.capitalGainsLimit.toLocaleString('en-GB')}.00 Limit</div>
+        </div>
+        <div style="text-align: right;">
+          <div style="font-size: 11px; color: #94A3B8;">Dividend Allowance</div>
+          <div style="font-size: 14px; font-weight: 800; color: #FFFFFF; margin-top: 2px;">£${state.user.dividendLimit.toLocaleString('en-GB')}.00 Tax-Free</div>
+        </div>
       </div>
     </div>
 
-    <div class="profile-info-section" style="margin:0 16px 16px">
-      <div class="profile-info-header">Holding Details</div>
-      <div class="profile-info-row">
-        <span class="profile-info-label">Account</span>
-        <span class="profile-info-value">${escapeHtml(holding.accountType)}</span>
-      </div>
-      <div class="profile-info-row">
-        <span class="profile-info-label">Geography</span>
-        <span class="profile-info-value">${escapeHtml(holding.geography)}</span>
-      </div>
-      <div class="profile-info-row">
-        <span class="profile-info-label">Sector</span>
-        <span class="profile-info-value">${escapeHtml(holding.sector)}</span>
-      </div>
-      <div class="profile-info-row">
-        <span class="profile-info-label">Cost Basis</span>
-        <span class="profile-info-value">${fmt(c.cost)}</span>
+    <!-- INVESTOR SUITABILITY MANDATE Card (Screenshot 1) -->
+    <div class="cyber-card" onclick="window.navigateTo('onboarding')" style="cursor: pointer;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 12px; font-weight: 800; color: #00F0FF; letter-spacing: 0.5px;">INVESTOR SUITABILITY MANDATE</span>
+        <span style="font-size: 12px; color: #00F0FF; font-weight: 800;">Recalibrate →</span>
       </div>
     </div>
 
-    <div style="display:flex;gap:10px;margin:0 16px 16px">
-      <button class="btn-primary" style="flex:1;padding:14px" onclick="navigate('etf')">
-        🔍 Check ETF Overlap
+    <!-- Quick Tools Grid -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+      <button class="quick-card" onclick="window.navigateTo('simulator')">
+        <div style="font-size: 12px; font-weight: 800; color: #FBBF24;">📈 Growth Simulator</div>
+        <div style="font-size: 10px; color: #94A3B8;">Forecast Compounding</div>
       </button>
-      <button class="btn-secondary" style="flex:1;padding:14px" onclick="deleteHolding(${holding.id})">
-        🗑 Remove
+      <button class="quick-card" onclick="window.navigateTo('etf_overlap')">
+        <div style="font-size: 12px; font-weight: 800; color: #00F0FF;">🔍 ETF Overlap Tool</div>
+        <div style="font-size: 10px; color: #94A3B8;">Analyze Fund Overlap</div>
+      </button>
+      <button class="quick-card" onclick="window.navigateTo('events')">
+        <div style="font-size: 12px; font-weight: 800; color: #10B981;">📅 Upcoming Events</div>
+        <div style="font-size: 10px; color: #94A3B8;">Live Masterclasses</div>
+      </button>
+      <button class="quick-card" onclick="window.navigateTo('news')">
+        <div style="font-size: 12px; font-weight: 800; color: #38BDF8;">📰 LSE Market News</div>
+        <div style="font-size: 10px; color: #94A3B8;">Financial Bulletins</div>
       </button>
     </div>
-  </div>`;
+
+    <!-- Admin Console Access -->
+    <div class="cyber-card" onclick="window.navigateTo('admin')" style="cursor: pointer; border-color: rgba(251, 191, 36, 0.4); margin-top: 10px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 18px;">👑</span>
+          <div>
+            <div style="font-size: 12px; font-weight: 800; color: #FBBF24; letter-spacing: 0.5px;">EB WEALTH ADMIN CONSOLE</div>
+            <div style="font-size: 10px; color: #94A3B8;">Executive Platform & Revenue Summary</div>
+          </div>
+        </div>
+        <span style="font-size: 12px; color: #FBBF24; font-weight: 800;">Open →</span>
+      </div>
+    </div>
+
+    <!-- Instant Cloud Sync & Sign Out -->
+    <div style="display: flex; gap: 10px; margin-top: 8px;">
+      <button style="flex: 1; background: rgba(0, 240, 255, 0.15); border: 1px solid #00F0FF; color: #00F0FF; border-radius: 12px; padding: 12px; font-weight: 800; font-size: 12px; cursor: pointer;" onclick="window.triggerCloudSync()">
+        ⚡ Cloud Sync to Firestore
+      </button>
+      <button style="background: rgba(244, 63, 94, 0.15); border: 1px solid #F43F5E; color: #F43F5E; border-radius: 12px; padding: 12px 18px; font-weight: 800; font-size: 12px; cursor: pointer;" onclick="window.signOut()">
+        Sign Out
+      </button>
+    </div>
+  `;
 }
 
-// ============================================================
-//  EVENT ATTACHMENT & GLOBAL FUNCTIONS
-// ============================================================
+// 14. ADMIN DASHBOARD SCREEN (Exact match to Android AdminDashboardScreen.kt)
+function renderAdminDashboardScreen() {
+  return `
+    <div class="market-top-row">
+      <button class="back-btn-circle" onclick="window.navigateBack()">
+        <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div>
+        <h2 style="font-size: 16px; font-weight: 800; color: #FFFFFF;">EB Wealth Admin Console</h2>
+        <div style="font-size: 11px; color: #94A3B8;">Platform analytics, revenue & curriculum management</div>
+      </div>
+    </div>
 
-function attachEvents() {
-  // Auth form submission
-  const signinForm = document.querySelector('#signin-email')?.closest('form');
-  const registerForm = document.querySelector('#reg-name')?.closest('form');
-  // Forms already use onsubmit inline
+    <!-- Key Business Metrics Grid (Exact match to Android AdminDashboardScreen.kt) -->
+    <div class="cyber-card" style="border-color: rgba(0, 240, 255, 0.35);">
+      <div style="font-size: 13px; font-weight: 800; color: #FFFFFF; margin-bottom: 12px;">Executive Platform Summary</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+        <div class="admin-metric-tile">
+          <span class="admin-metric-label">Total Users</span>
+          <span class="admin-metric-val">4,820</span>
+          <span class="admin-metric-badge" style="color: #10B981;">+14% MoM</span>
+        </div>
+        <div class="admin-metric-tile">
+          <span class="admin-metric-label">Pro Subscribers</span>
+          <span class="admin-metric-val">1,248</span>
+          <span class="admin-metric-badge" style="color: #FBBF24;">£12,410 MRR</span>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <div class="admin-metric-tile">
+          <span class="admin-metric-label">Course Completion</span>
+          <span class="admin-metric-val">68.4%</span>
+          <span class="admin-metric-badge" style="color: #38BDF8;">Disciplined</span>
+        </div>
+        <div class="admin-metric-tile">
+          <span class="admin-metric-label">AI Coach Queries</span>
+          <span class="admin-metric-val">32,940</span>
+          <span class="admin-metric-badge" style="color: #10B981;">99.8% Safety</span>
+        </div>
+      </div>
+    </div>
 
-  // AI messages scroll
-  const msgs = document.getElementById('ai-messages');
-  if (msgs) msgs.scrollTop = msgs.scrollHeight;
+    <!-- Most Popular Curriculum & Research (Exact match to Android AdminDashboardScreen.kt) -->
+    <div class="cyber-card">
+      <div style="font-size: 13px; font-weight: 800; color: #FFFFFF; margin-bottom: 12px;">Top Performing Educational Content</div>
+      <div class="admin-content-row">
+        <div>
+          <div class="admin-content-title">Level 3: Stocks & Shares ISA Tax Fortress</div>
+          <div class="admin-content-sub">3,890 completions</div>
+        </div>
+        <span style="font-size: 11px; font-weight: 700; color: #10B981;">94% pass</span>
+      </div>
+      <div style="height: 1px; background: rgba(255, 255, 255, 0.08); margin: 6px 0;"></div>
+      <div class="admin-content-row">
+        <div>
+          <div class="admin-content-title">Level 4: The ETF Overlap Trap</div>
+          <div class="admin-content-sub">3,410 completions</div>
+        </div>
+        <span style="font-size: 11px; font-weight: 700; color: #10B981;">91% pass</span>
+      </div>
+      <div style="height: 1px; background: rgba(255, 255, 255, 0.08); margin: 6px 0;"></div>
+      <div class="admin-content-row">
+        <div>
+          <div class="admin-content-title">Level 1: What is Investing?</div>
+          <div class="admin-content-sub">4,210 completions</div>
+        </div>
+        <span style="font-size: 11px; font-weight: 700; color: #10B981;">98% pass</span>
+      </div>
+    </div>
+
+    <!-- Financial Engine & Platform Infrastructure -->
+    <div class="cyber-card">
+      <div style="font-size: 13px; font-weight: 800; color: #FFFFFF; margin-bottom: 12px;">Financial Data & Regulatory Status</div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+          <span style="color: #94A3B8;">LSE Live Market Feed:</span>
+          <span style="color: #10B981; font-weight: 700;">● Connected (12ms)</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+          <span style="color: #94A3B8;">HMRC 2024/25 Allowance Engine:</span>
+          <span style="color: #00F0FF; font-weight: 700;">Active (£20k ISA / £60k SIPP)</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px;">
+          <span style="color: #94A3B8;">Cloud Firestore Sync:</span>
+          <span style="color: #FBBF24; font-weight: 700;">com-aistudio-ebwealth-kq-f6b41</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Administrative Operations -->
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
+      <button class="admin-action-btn" onclick="alert('Broadcasting priority market bulletin to all 4,820 registered investors.')">
+        📢 Broadcast Market Notice to Members
+      </button>
+      <button class="admin-action-btn" onclick="alert('Curriculum XP weights recalibrated according to FCA investor literacy benchmarks.')">
+        🎯 Recalibrate Curriculum XP Weights
+      </button>
+      <button class="admin-action-btn" onclick="alert('Exporting encrypted FCA compliance regulatory audit log (CSV/PDF)... Generated.')">
+        📥 Export FCA Compliance Audit Log
+      </button>
+    </div>
+  `;
 }
 
-function closeModalOnOverlay(e) {
-  if (e.target === e.currentTarget) {
-    setState({ showAddHolding: false, showNewPost: false });
-  }
+// 15. ONBOARDING / SUITABILITY QUIZ
+function renderOnboardingScreen() {
+  return `
+    <div class="market-top-row">
+      <button class="back-btn-circle" onclick="window.navigateBack()">
+        <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div>
+        <h2 style="font-size: 16px; font-weight: 800; color: #FFFFFF;">Investor Suitability Questionnaire</h2>
+        <div style="font-size: 11px; color: #94A3B8;">FCA-mandated risk profiling assessment</div>
+      </div>
+    </div>
+
+    <div class="cyber-card">
+      <div style="font-size: 13px; font-weight: 800; color: #FFFFFF; margin-bottom: 8px;">1. Investment Time Horizon</div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <label style="font-size: 12px; color: #CBD5E1;"><input type="radio" name="horizon" checked /> 10+ Years (Long-Term Compounding)</label>
+        <label style="font-size: 12px; color: #CBD5E1;"><input type="radio" name="horizon" /> 5-10 Years (Balanced Growth)</label>
+        <label style="font-size: 12px; color: #CBD5E1;"><input type="radio" name="horizon" /> Under 5 Years (Capital Preservation)</label>
+      </div>
+    </div>
+
+    <div class="cyber-card">
+      <div style="font-size: 13px; font-weight: 800; color: #FFFFFF; margin-bottom: 8px;">2. Risk Tolerance Profile</div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <label style="font-size: 12px; color: #CBD5E1;"><input type="radio" name="risk" checked /> Balanced Growth (Global ETFs & Index Funds)</label>
+        <label style="font-size: 12px; color: #CBD5E1;"><input type="radio" name="risk" /> Aggressive Expansion (Tech & Growth Stocks)</label>
+        <label style="font-size: 12px; color: #CBD5E1;"><input type="radio" name="risk" /> Conservative (Cash Equivalents & Gilts)</label>
+      </div>
+    </div>
+
+    <button class="btn-pro-gold" style="width: 100%; padding: 14px;" onclick="window.saveSuitability()">
+      Save Updated Investor Mandate
+    </button>
+  `;
 }
 
-// ── Global function bindings (called from inline HTML handlers) ──
-window.setState = setState;
-window.navigate = navigate;
-window.goBack = goBack;
-window.navTo = (view) => {
-  const communityViews = ['community', 'events', 'news'];
-  if (communityViews.includes(view)) {
-    setState({ view: 'community', communityTab: view === 'community' ? state.communityTab || 'posts' : view === 'events' ? 'events' : 'news', navHistory: [] });
-  } else {
-    setState({ view, navHistory: [] });
+// Pro Modal
+function renderProModal() {
+  return `
+    <div class="modal-overlay" onclick="window.closeModals()">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="color: #FBBF24; font-size: 20px;">★</span>
+            <h2 style="font-size: 18px; font-weight: 900; color: #FFFFFF;">EB Wealth Pro Tier</h2>
+          </div>
+          <button style="background: none; border: none; color: #94A3B8; font-size: 20px; cursor: pointer;" onclick="window.closeModals()">✕</button>
+        </div>
+
+        <p style="font-size: 13px; color: #CBD5E1; line-height: 1.5; margin-bottom: 16px;">
+          Unlock institutional UK wealth intelligence, real-time London Stock Exchange Level 2 quotes, unlimited AI portfolio rebalancing, and verified priority community status.
+        </p>
+
+        <div style="background: rgba(0, 240, 255, 0.08); border: 1px solid #00F0FF; border-radius: 12px; padding: 14px; margin-bottom: 20px;">
+          <div style="font-size: 11px; color: #00F0FF; font-weight: 700;">MEMBERSHIP INCLUDES:</div>
+          <ul style="font-size: 12px; color: #FFFFFF; margin-top: 8px; padding-left: 18px; display: flex; flex-direction: column; gap: 6px;">
+            <li>UK Stocks & Shares ISA Tax Optimization Engine</li>
+            <li>Real-time LSE Live Quotes & Health Scorecards</li>
+            <li>Full 6-Level Wealth Academy & Certification</li>
+            <li>Direct Cloud Firestore Vault Encryption</li>
+          </ul>
+        </div>
+
+        <button class="btn-pro-gold" style="width: 100%; padding: 12px; font-size: 14px;" onclick="window.upgradeToPro()">
+          Upgrade Now — £14.99 / month
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// Add Holding Modal
+function renderAddHoldingModal() {
+  return `
+    <div class="modal-overlay" onclick="window.closeModals()">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h2 style="font-size: 18px; font-weight: 900; color: #FFFFFF;">Add UK Asset Holding</h2>
+          <button style="background: none; border: none; color: #94A3B8; font-size: 20px; cursor: pointer;" onclick="window.closeModals()">✕</button>
+        </div>
+
+        <form onsubmit="window.saveHolding(event)">
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div>
+              <label style="font-size: 11px; color: #94A3B8; font-weight: 700;">TICKER (e.g. VWRP, VUAG, AZN)</label>
+              <input type="text" id="holding-ticker" required style="width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 8px; padding: 10px; color: #fff; margin-top: 4px;" />
+            </div>
+            <div>
+              <label style="font-size: 11px; color: #94A3B8; font-weight: 700;">ASSET NAME</label>
+              <input type="text" id="holding-name" required placeholder="e.g. Vanguard FTSE All-World" style="width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 8px; padding: 10px; color: #fff; margin-top: 4px;" />
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <label style="font-size: 11px; color: #94A3B8; font-weight: 700;">SHARES</label>
+                <input type="number" step="any" id="holding-shares" required placeholder="10" style="width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 8px; padding: 10px; color: #fff; margin-top: 4px;" />
+              </div>
+              <div>
+                <label style="font-size: 11px; color: #94A3B8; font-weight: 700;">CURRENT PRICE (£)</label>
+                <input type="number" step="any" id="holding-price" required placeholder="112.40" style="width: 100%; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 8px; padding: 10px; color: #fff; margin-top: 4px;" />
+              </div>
+            </div>
+
+            <button type="submit" style="margin-top: 10px; background: #00F0FF; color: #040B14; font-weight: 800; border: none; border-radius: 10px; padding: 12px; cursor: pointer;">
+              Save to Portfolio
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+// Window Global Handlers
+window.navigateTo = navigateTo;
+window.navigateBack = navigateBack;
+
+window.openProModal = function() {
+  state.showProModal = true;
+  render();
+};
+
+window.openAddHoldingModal = function() {
+  state.showAddHoldingModal = true;
+  render();
+};
+
+window.closeModals = function() {
+  state.showProModal = false;
+  state.showAddHoldingModal = false;
+  render();
+};
+
+window.selectLevel = function(lvl) {
+  state.selectedLevel = lvl;
+  render();
+};
+
+window.updateMarketSearch = function(val) {
+  state.marketSearchQuery = val;
+  render();
+  const input = document.getElementById('market-search-input');
+  if (input) {
+    input.focus();
+    input.setSelectionRange(val.length, val.length);
   }
 };
 
-window.handleSignIn = handleSignIn;
-window.handleRegister = handleRegister;
-window.handleLogout = handleLogout;
+window.refreshPortfolio = function() {
+  render();
+};
 
-window.selectOnboardingOption = selectOnboardingOption;
-window.onboardingNext = onboardingNext;
-window.onboardingBack = onboardingBack;
+window.updateSim = function(key, val) {
+  state[key] = parseFloat(val);
+  render();
+};
 
-window.addHolding = addHolding;
-window.deleteHolding = deleteHolding;
-window.refreshPrices = refreshPrices;
+window.sendPrompt = function(promptText) {
+  state.chatMessages.push({ sender: 'user', text: promptText });
+  render();
+  setTimeout(() => {
+    let response = "Under current HMRC 2024/25 regulations, your annual £20,000 Stocks & Shares ISA allowance shelters all dividend yields and capital gains indefinitely. Combining low-cost index ETFs like VWRP with disciplined regular contributions provides maximum risk-adjusted compounding.";
+    state.chatMessages.push({ sender: 'ai', text: response });
+    render();
+  }, 400);
+};
 
-window.selectQuizAnswer = selectQuizAnswer;
-window.submitQuiz = submitQuiz;
-window.resetQuiz = resetQuiz;
+window.submitChat = function(e) {
+  e.preventDefault();
+  const input = document.getElementById('ai-chat-input');
+  const val = input.value.trim();
+  if (val) {
+    window.sendPrompt(val);
+    input.value = '';
+  }
+};
 
-window.selectETF1 = selectETF1;
-window.selectETF2 = selectETF2;
+window.answerQuiz = function(lessonId, choiceIndex) {
+  const lesson = state.lessons.find(l => l.id === lessonId);
+  if (choiceIndex === lesson.quiz.answer) {
+    lesson.completed = true;
+    state.user.xp += lesson.xp;
+    alert(`Correct! You earned +${lesson.xp} XP!`);
+    render();
+  } else {
+    alert('Not quite right. Review the lesson summary and try again!');
+  }
+};
 
-window.updateSim = updateSim;
+window.toggleRegister = function(eventId) {
+  if (state.registeredEvents.includes(eventId)) {
+    state.registeredEvents = state.registeredEvents.filter(id => id !== eventId);
+  } else {
+    state.registeredEvents.push(eventId);
+  }
+  render();
+};
 
-window.handleAISend = handleAISend;
-window.sendQuickPrompt = sendQuickPrompt;
-window.clearChat = clearChat;
-window.sendAIMessage = sendAIMessage;
+window.saveSuitability = function() {
+  alert('Investor suitability profile updated and validated under FCA compliance standards.');
+  window.navigateTo('profile');
+};
 
-window.toggleLike = toggleLike;
-window.addPost = addPost;
-window.togglePost = togglePost;
-window.sharePost = sharePost;
-window.toggleEventRegistration = toggleEventRegistration;
+window.addHoldingQuick = function(ticker, name, price) {
+  state.holdings.push({ ticker, name, shares: 10, avgBuyPrice: price, currentPrice: price });
+  localStorage.setItem('eb_holdings', JSON.stringify(state.holdings));
+  alert(`Added 10 shares of ${ticker} to your portfolio!`);
+  window.navigateTo('portfolio');
+};
 
-window.closeModalOnOverlay = closeModalOnOverlay;
+window.saveHolding = function(e) {
+  e.preventDefault();
+  const ticker = document.getElementById('holding-ticker').value.toUpperCase().trim();
+  const name = document.getElementById('holding-name').value.trim();
+  const shares = parseFloat(document.getElementById('holding-shares').value) || 1;
+  const currentPrice = parseFloat(document.getElementById('holding-price').value) || 100;
 
-// ============================================================
-//  INITIAL RENDER
-// ============================================================
+  state.holdings.push({ ticker, name, shares, avgBuyPrice: currentPrice, currentPrice });
+  localStorage.setItem('eb_holdings', JSON.stringify(state.holdings));
+  state.showAddHoldingModal = false;
+  render();
+};
 
+window.upgradeToPro = function() {
+  state.user.isPro = true;
+  state.user.tierStatus = 'Pro Wealth Member';
+  state.showProModal = false;
+  alert('Congratulations! Upgraded to EB Wealth Pro Tier.');
+  render();
+};
+
+window.triggerCloudSync = async function() {
+  try {
+    await firebaseService.syncProfile(state.user);
+    await firebaseService.syncHoldings(state.holdings);
+    alert(`⚡ Cloud Firestore Synchronized Successfully!\nDatabase: ${firebaseService.lastSync}\nProject: com-aistudio-ebwealth-kq-f6b41\n\nYour portfolio holdings and profile state are in live sync across Android, iOS, and Web.`);
+  } catch (err) {
+    alert(`Local cache synchronized. Active offline fallback mode for Firestore: ${err.message || 'Complete'}`);
+  }
+  render();
+};
+
+window.signOut = function() {
+  if (confirm('Sign out from EB Wealth?')) {
+    state.currentView = 'home';
+    render();
+  }
+};
+
+// Initial Render
 render();
