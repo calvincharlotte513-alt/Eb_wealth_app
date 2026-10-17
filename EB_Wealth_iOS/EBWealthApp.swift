@@ -15,6 +15,7 @@ public enum AppScreen: Hashable {
     case news
     case profile
     case onboarding
+    case admin
 }
 
 @main
@@ -211,6 +212,9 @@ public struct EBWealthApp: App {
 
                         case .onboarding:
                             OnboardingView(onBack: { currentScreen = .profile })
+
+                        case .admin:
+                            AdminDashboardView(onBack: { currentScreen = .profile })
                         }
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

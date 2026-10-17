@@ -198,6 +198,32 @@ public struct ProfileView: View {
                 }
                 .buttonStyle(PlainButtonStyle())
 
+                // Admin Console Access
+                Button(action: { onNavigate(.admin) }) {
+                    HStack {
+                        Text("👑")
+                            .font(.system(size: 16))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("EB WEALTH ADMIN CONSOLE")
+                                .font(.system(size: 12, weight: .black))
+                                .foregroundColor(Color(hex: "FBBF24"))
+                                .tracking(0.5)
+                            Text("Executive Platform & Revenue Summary")
+                                .font(.system(size: 10))
+                                .foregroundColor(Color(hex: "94A3B8"))
+                        }
+                        Spacer()
+                        Text("Open →")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(Color(hex: "FBBF24"))
+                    }
+                    .padding(14)
+                    .background(Color(hex: "071322").opacity(0.85))
+                    .cornerRadius(14)
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(hex: "FBBF24").opacity(0.35), lineWidth: 1))
+                }
+                .buttonStyle(PlainButtonStyle())
+
                 // Quick Tools Grid
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                     toolButton(title: "📈 Growth Simulator", subtitle: "Forecast Compounding") { onNavigate(.simulator) }

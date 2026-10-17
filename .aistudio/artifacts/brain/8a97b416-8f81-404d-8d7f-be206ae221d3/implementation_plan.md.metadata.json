@@ -1,0 +1,6 @@
+{
+  "summary": "Comprehensive architectural plan for mirroring the full 15-screen EB Wealth Android experience into the Web application (and aligning iOS), featuring a mobile-centered phone viewport, 1:1 screen visual fidelity, and live Firebase Cloud Firestore synchronization.",
+  "updatedAt": "2026-10-17T12:37:58.940544206Z",
+  "requestFeedback": true,
+  "userFacing": true
+}
