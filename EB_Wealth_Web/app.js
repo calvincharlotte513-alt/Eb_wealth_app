@@ -450,17 +450,11 @@ function renderBottomDock() {
           </div>
           <span>Portfolio</span>
         </button>
-
-        <button class="dock-nav-item ${state.currentView === 'profile' ? 'active' : ''}" onclick="window.navigateTo('profile')">
-          <div class="dock-icon-box">
-            <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-          </div>
-          <span>Profile</span>
-        </button>
       </nav>
     </div>
   `;
 }
+
 
 function renderCurrentScreen() {
   switch (state.currentView) {
@@ -753,6 +747,17 @@ function renderLandingPage() {
 
 // 1. DASHBOARD / HOME SCREEN (Screenshot 2)
 function renderHomeScreen() {
+  // Compounding trajectory calculation (7% over 25 years with sim values)
+  const simR = state.simRate / 100.0;
+  const simMonths = state.simYears * 12;
+  const simMonthlyRate = simR / 12.0;
+  const fvI = state.simInitial * Math.pow(1 + simMonthlyRate, simMonths);
+  const fvM = simMonthlyRate > 0 ? state.simMonthly * ((Math.pow(1 + simMonthlyRate, simMonths) - 1) / simMonthlyRate) : state.simMonthly * simMonths;
+  const projectedValue = Math.round(fvI + fvM);
+  const totalInvested = state.simInitial + state.simMonthly * simMonths;
+  const totalGrowth = projectedValue - totalInvested;
+  const growthPct = totalInvested > 0 ? ((totalGrowth / totalInvested) * 100).toFixed(1) : '0.0';
+
   return `
     <div class="hero-title-box">
       <div class="hero-title-main">
@@ -770,51 +775,107 @@ function renderHomeScreen() {
       </div>
     </div>
 
-    <!-- 2x2 Quick Action Cards Grid (Screenshot 2) -->
-    <div class="quick-action-grid">
-      <div class="quick-card" onclick="window.navigateTo('market')">
-        <div class="quick-card-icon-box icon-cyan-box">
-          <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
-        </div>
-        <div>
-          <div class="quick-card-title">Market Galaxy</div>
-          <div class="quick-card-sub">LSE & Global Movers</div>
+    <!-- COMPOUNDING TRAJECTORY CARD (Image 1) -->
+    <div class="traj-card" onclick="window.navigateTo('simulator')" style="cursor:pointer;">
+      <div class="traj-label">COMPOUNDING TRAJECTORY</div>
+      <div class="traj-value">£${projectedValue.toLocaleString('en-GB')}</div>
+      <div class="traj-subtitle">Projected value at Year ${state.simYears} (@ ${state.simRate}% annual growth)</div>
+
+      <!-- SVG curve chart -->
+      <div class="traj-chart-wrap">
+        <svg viewBox="0 0 300 100" preserveAspectRatio="none" style="width:100%;height:100px;display:block;">
+          <defs>
+            <linearGradient id="curveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+              <stop offset="60%" style="stop-color:#10B981;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#c8a96e;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+          <path d="M0,95 C30,93 60,88 90,78 C120,65 150,48 180,32 C210,16 240,6 270,2 L300,1" fill="none" stroke="url(#curveGrad)" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="300" cy="1" r="5" fill="#c8a96e"/>
+        </svg>
+        <div class="traj-axis-row">
+          <span>Year 0</span>
+          <span>Year ${Math.round(state.simYears / 2)}</span>
+          <span style="color:#c8a96e;font-weight:700;">Year ${state.simYears}</span>
         </div>
       </div>
 
-      <div class="quick-card" onclick="window.navigateTo('learn')">
-        <div class="quick-card-icon-box icon-blue-box">
-          <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>
-        </div>
+      <!-- Portfolio value strip -->
+      <div class="traj-bottom-strip">
         <div>
-          <div class="quick-card-title">Learning Nexus</div>
-          <div class="quick-card-sub">6-Level Academy</div>
+          <div class="traj-strip-label">ESTIMATED PORTFOLIO VALUE</div>
+          <div class="traj-strip-value">£${projectedValue.toLocaleString('en-GB')}</div>
         </div>
+        <div class="traj-gain-badge">↑ +£${totalGrowth.toLocaleString('en-GB')} (${growthPct}%)</div>
+      </div>
+      <div class="traj-strip-row2">
+        <span>Total Invested <strong>£${Math.round(totalInvested).toLocaleString('en-GB')}</strong></span>
+        <span>Monthly <strong>£${state.simMonthly}/mo</strong></span>
+      </div>
+    </div>
+
+    <!-- ANALYTICS & WEALTH TOOLS (Image 2) -->
+    <div class="section-header-row" style="margin-top:20px;">
+      <div class="section-label-gold">ANALYTICS & WEALTH TOOLS</div>
+    </div>
+    <div class="tools-grid-2x2">
+      <div class="tool-card" onclick="window.navigateTo('etf_overlap')">
+        <div class="tool-icon-box tool-icon-cyan">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:22px;height:22px;"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg>
+        </div>
+        <div class="tool-card-text">
+          <div class="tool-card-title">Overlap Tool</div>
+          <div class="tool-card-sub">Analyze duplicate ETF holdings</div>
+        </div>
+        <div class="tool-card-arrow">›</div>
       </div>
 
-      <div class="quick-card" onclick="window.navigateTo('portfolio')">
-        <div class="quick-card-icon-box icon-gold-box">
-          <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M11 2v20c-5.07-.5-9-4.79-9-10s3.93-9.5 9-10zm2 0v8.99L21.95 7.5C20.61 4.27 17.2 2 13 2z"/></svg>
+      <div class="tool-card" onclick="window.navigateTo('simulator')">
+        <div class="tool-icon-box tool-icon-green">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:22px;height:22px;"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
         </div>
-        <div>
-          <div class="quick-card-title">Portfolio Constellation</div>
-          <div class="quick-card-sub">Holdings & Rebalance</div>
+        <div class="tool-card-text">
+          <div class="tool-card-title">Simulator</div>
+          <div class="tool-card-sub">Compound interest projection</div>
         </div>
+        <div class="tool-card-arrow">›</div>
       </div>
 
-      <div class="quick-card" onclick="window.navigateTo('community')">
-        <div class="quick-card-icon-box icon-teal-box">
-          <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      <div class="tool-card" onclick="window.navigateTo('ai_coach')">
+        <div class="tool-icon-box tool-icon-gold">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:22px;height:22px;"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-8 12.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm1-4.5h-2c0-1.5 1.5-2 1.5-3 0-.83-.67-1.5-1.5-1.5S10 6.17 10 7H8c0-1.66 1.34-3 3-3s3 1.34 3 3c0 1.5-1.5 2-1.5 3h-1.5z"/></svg>
         </div>
-        <div>
-          <div class="quick-card-title">Community Forum</div>
-          <div class="quick-card-sub">Discussions & Events</div>
+        <div class="tool-card-text">
+          <div class="tool-card-title">AI Wealth Coach</div>
+          <div class="tool-card-sub">24/7 personal investment tutor</div>
         </div>
+        <div class="tool-card-arrow">›</div>
+      </div>
+
+      <div class="tool-card" onclick="window.navigateTo('news')">
+        <div class="tool-icon-box tool-icon-blue">
+          <svg viewBox="0 0 24 24" fill="currentColor" style="width:22px;height:22px;"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+        </div>
+        <div class="tool-card-text">
+          <div class="tool-card-title">Market News</div>
+          <div class="tool-card-sub">UK ISA allowances & interest rates</div>
+        </div>
+        <div class="tool-card-arrow">›</div>
+      </div>
+    </div>
+
+    <!-- Regulatory Notice -->
+    <div class="reg-notice-card">
+      <div class="reg-notice-icon">ℹ</div>
+      <div class="reg-notice-text">
+        <strong>Regulatory & Educational Notice</strong><br>
+        EB Wealth provides analytical intelligence and investment education. It does not provide personalized financial advice or execution brokerage. Capital is at risk; investments can fluctuate, and you may receive back less than originally invested. Regulated UK financial advice should be sought for personal decisions.
       </div>
     </div>
 
     <!-- Featured Market Assets Section -->
-    <div class="section-header-row">
+    <div class="section-header-row" style="margin-top:20px;">
       <div class="section-label-gold">FEATURED MARKET ASSETS</div>
       <div class="section-subtitle-muted">Live UK & Global Movers</div>
     </div>
@@ -834,6 +895,7 @@ function renderHomeScreen() {
     </div>
   `;
 }
+
 
 // 2. MARKET RESEARCH SCREEN (Screenshot 3)
 function renderMarketScreen() {
@@ -1174,58 +1236,188 @@ function renderPortfolioScreen() {
 }
 
 // 7. ETF OVERLAP CHECKER SCREEN
+// 7. ETF OVERLAP CHECKER SCREEN (Image 5)
 function renderETFOverlapScreen() {
+  const selected = state.overlapSelected;
+
+  // Static overlap data
+  const ETF_OVERLAPS = {
+    'VWRP+VUAG': 62, 'VUAG+VWRP': 62,
+    'VWRP+VUSA': 58, 'VUSA+VWRP': 58,
+    'VWRP+IWDA': 71, 'IWDA+VWRP': 71,
+    'VUAG+VUSA': 95, 'VUSA+VUAG': 95,
+    'VWRP+EQQQ': 28, 'EQQQ+VWRP': 28,
+    'VWRP+EQGB': 28, 'EQGB+VWRP': 28,
+    'VWRP+VHYL': 45, 'VHYL+VWRP': 45,
+    'VWRP+ISF':  25, 'ISF+VWRP':  25,
+    'VWRP+IITU': 22, 'IITU+VWRP': 22,
+    'VWRP+CSPX': 60, 'CSPX+VWRP': 60,
+  };
+
+  // Calculate overlap for selected pair
+  let overlapPct = 15;
+  if (selected.length >= 2) {
+    const key = `${selected[0]}+${selected[1]}`;
+    overlapPct = ETF_OVERLAPS[key] || 15;
+  }
+
+  // Overlapping holdings data keyed by pair
+  const OVERLAP_HOLDINGS = {
+    'VWRP+VUAG': [
+      { name: 'Microsoft Corp', ticker: 'MSFT', sector: 'Information Technology', funds: 2, pct: 5.4 },
+      { name: 'Apple Inc', ticker: 'AAPL', sector: 'Information Technology', funds: 2, pct: 5.0 },
+      { name: 'NVIDIA Corp', ticker: 'NVDA', sector: 'Information Technology', funds: 2, pct: 4.4 },
+      { name: 'Amazon.com Inc', ticker: 'AMZN', sector: 'Consumer Discretionary', funds: 2, pct: 3.8 },
+      { name: 'Alphabet Inc Class A', ticker: 'GOOGL', sector: 'Communication Services', funds: 2, pct: 2.9 },
+      { name: 'Meta Platforms', ticker: 'META', sector: 'Communication Services', funds: 2, pct: 2.4 },
+      { name: 'Tesla Inc', ticker: 'TSLA', sector: 'Consumer Discretionary', funds: 2, pct: 1.8 },
+      { name: 'Broadcom Inc', ticker: 'AVGO', sector: 'Information Technology', funds: 2, pct: 1.5 },
+      { name: 'Berkshire Hathaway B', ticker: 'BRK.B', sector: 'Financials', funds: 2, pct: 1.3 },
+    ],
+    'DEFAULT': [
+      { name: 'Microsoft Corp', ticker: 'MSFT', sector: 'Information Technology', funds: 2, pct: 3.2 },
+      { name: 'Apple Inc', ticker: 'AAPL', sector: 'Information Technology', funds: 2, pct: 2.9 },
+      { name: 'NVIDIA Corp', ticker: 'NVDA', sector: 'Information Technology', funds: 2, pct: 2.1 },
+    ]
+  };
+
+  const pairKey = selected.length >= 2 ? `${selected[0]}+${selected[1]}` : 'DEFAULT';
+  const holdings = OVERLAP_HOLDINGS[pairKey] || OVERLAP_HOLDINGS['DEFAULT'];
+
+  const overlapColor = overlapPct >= 60 ? '#ef4444' : overlapPct >= 30 ? '#FBBF24' : '#10B981';
+  const isDuplicate = overlapPct >= 25;
+
+  const ALL_ETFS = ['VWRP', 'VUAG', 'IITU', 'EQGB', 'IWDA', 'CSPX', 'VHYL', 'ISF'];
+
   return `
     <div class="market-top-row">
       <button class="back-btn-circle" onclick="window.navigateBack()">
         <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
       </button>
       <div>
-        <h2 style="font-size: 16px; font-weight: 800; color: #FFFFFF;">ETF Overlap Checker</h2>
-        <div style="font-size: 11px; color: #94A3B8;">Identify duplicate exposure across index funds</div>
+        <h2 style="font-size:16px;font-weight:800;color:#FFFFFF;">ETF Overlap Checker</h2>
+        <div style="font-size:11px;color:#94A3B8;">Identify hidden duplicate stock exposure across funds</div>
       </div>
     </div>
 
-    <div class="cyber-card" style="border-color: rgba(0, 240, 255, 0.4); text-align: center;">
-      <div style="font-size: 11px; font-weight: 800; color: #FBBF24;">ESTIMATED PORTFOLIO WEIGHT OVERLAP</div>
-      <div style="font-size: 42px; font-weight: 900; color: #00F0FF; margin: 8px 0;">64.2%</div>
-      <p style="font-size: 12px; color: #94A3B8;">Between Vanguard FTSE All-World (VWRP) & Vanguard S&P 500 (VUAG)</p>
-    </div>
-
-    <div class="cyber-card">
-      <div style="font-size: 12px; font-weight: 800; color: #FFFFFF; margin-bottom: 10px;">TOP DUPLICATE HOLDINGS</div>
-      <div style="display: flex; flex-direction: column; gap: 8px; font-size: 12px;">
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
-          <span>Microsoft Corporation (MSFT)</span>
-          <span style="color: #00F0FF; font-weight: 700;">6.8% Combined</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
-          <span>Apple Inc. (AAPL)</span>
-          <span style="color: #00F0FF; font-weight: 700;">6.2% Combined</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
-          <span>NVIDIA Corporation (NVDA)</span>
-          <span style="color: #00F0FF; font-weight: 700;">5.9% Combined</span>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
-          <span>Amazon.com Inc. (AMZN)</span>
-          <span style="color: #00F0FF; font-weight: 700;">3.8% Combined</span>
-        </div>
+    <!-- ETF selector card -->
+    <div class="cyber-card" style="border-color:rgba(0,198,255,0.3);">
+      <div style="font-size:12px;font-weight:700;color:#CBD5E1;margin-bottom:12px;">Select ETFs to compare:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        ${ALL_ETFS.map(etf => {
+          const isSelected = selected.includes(etf);
+          return `
+            <button onclick="window.toggleEtf('${etf}')" style="
+              padding:8px 16px;border-radius:20px;font-size:13px;font-weight:800;cursor:pointer;border:2px solid;
+              ${isSelected
+                ? 'background:#00c6ff;color:#040B14;border-color:#00c6ff;'
+                : 'background:rgba(255,255,255,0.06);color:#94A3B8;border-color:rgba(255,255,255,0.15);'}
+            ">
+              ${isSelected ? '✓ ' : ''}${etf}
+            </button>
+          `;
+        }).join('')}
+      </div>
+      <div style="font-size:12px;color:#94A3B8;">
+        Comparing ${selected.length} fund${selected.length !== 1 ? 's' : ''}: <strong style="color:#fff;">${selected.join(', ') || 'None selected'}</strong>
       </div>
     </div>
+
+    ${isDuplicate ? `
+    <!-- DUPLICATION DETECTED warning -->
+    <div style="background:rgba(251,191,36,0.08);border:1.5px solid #FBBF24;border-radius:14px;padding:16px;margin-top:4px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span style="font-size:18px;">⚠</span>
+        <span style="font-size:13px;font-weight:900;color:#FBBF24;letter-spacing:0.5px;">DUPLICATION DETECTED</span>
+      </div>
+      <p style="font-size:13px;color:#CBD5E1;line-height:1.6;margin:0 0 10px 0;">
+        OVERLAP DETECTED: This combination may increase your exposure to mega-cap companies like
+        <strong style="color:#fff;">${holdings[0]?.name} (${holdings[0]?.pct}%)</strong>,
+        <strong style="color:#fff;">${holdings[1]?.name} (${holdings[1]?.pct}%)</strong>,
+        <strong style="color:#fff;">${holdings[2]?.name} (${holdings[2]?.pct}%)</strong>.
+        Holding multiple funds with the same underlying giants does not increase true diversification.
+      </p>
+      <div style="font-size:13px;color:#00c6ff;cursor:pointer;font-weight:700;" onclick="window.navigateTo('learn')">
+        Learn more about the ETF Overlap Trap in the Academy →
+      </div>
+    </div>
+    ` : `
+    <!-- Low overlap -->
+    <div style="background:rgba(16,185,129,0.08);border:1.5px solid #10B981;border-radius:14px;padding:16px;margin-top:4px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:18px;">✅</span>
+        <span style="font-size:13px;font-weight:900;color:#10B981;letter-spacing:0.5px;">LOW OVERLAP — GOOD DIVERSIFICATION</span>
+      </div>
+      <p style="font-size:13px;color:#CBD5E1;line-height:1.6;margin:0;">
+        This combination provides good diversification with only <strong style="color:#10B981;">${overlapPct}% estimated overlap</strong>. These funds complement each other effectively.
+      </p>
+    </div>
+    `}
+
+    <!-- Overlap % big display -->
+    <div class="cyber-card" style="text-align:center;margin-top:4px;">
+      <div style="font-size:11px;font-weight:800;color:#94A3B8;letter-spacing:0.8px;margin-bottom:6px;">ESTIMATED WEIGHT OVERLAP</div>
+      <div style="font-size:52px;font-weight:900;color:${overlapColor};line-height:1;">${overlapPct}%</div>
+      <div style="font-size:12px;color:#94A3B8;margin-top:6px;">
+        ${selected.length >= 2 ? `Between ${selected[0]} and ${selected[1]}` : 'Select 2 ETFs to compare'}
+      </div>
+    </div>
+
+    <!-- Overlapping Company Holdings list -->
+    ${selected.length >= 2 ? `
+    <div style="margin-top:4px;">
+      <div style="font-size:15px;font-weight:800;color:#FFFFFF;margin-bottom:12px;">
+        Overlapping Company Holdings (${holdings.length})
+      </div>
+      ${holdings.map(h => `
+        <div class="cyber-card" style="margin-bottom:8px;padding:14px 16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-size:14px;font-weight:800;color:#FFFFFF;">${h.name}</div>
+              <div style="font-size:11px;color:#94A3B8;margin-top:2px;">Ticker: ${h.ticker} • Sector: ${h.sector}</div>
+            </div>
+            <div style="background:#c8a96e;color:#040B14;font-size:11px;font-weight:900;padding:5px 10px;border-radius:8px;white-space:nowrap;">
+              ${h.funds} funds (${h.pct}%)
+            </div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    ` : ''}
   `;
 }
 
-// 8. COMPOUND GROWTH SIMULATOR SCREEN
+
+// 8. COMPOUND GROWTH SIMULATOR SCREEN (Images 3 & 4)
 function renderSimulatorScreen() {
   const r = state.simRate / 100.0;
   const months = state.simYears * 12;
   const monthlyRate = r / 12.0;
-  const fvInitial = state.simInitial * Math.pow(1.0 + monthlyRate, months);
-  const fvMonthly = monthlyRate > 0 ? state.simMonthly * ((Math.pow(1.0 + monthlyRate, months) - 1.0) / monthlyRate) : state.simMonthly * months;
+  const fvInitial = state.simInitial * Math.pow(1 + monthlyRate, months);
+  const fvMonthly = monthlyRate > 0
+    ? state.simMonthly * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate)
+    : state.simMonthly * months;
   const totalValue = fvInitial + fvMonthly;
-  const totalInvested = state.simInitial + (state.simMonthly * months);
+  const totalInvested = state.simInitial + state.simMonthly * months;
   const totalGrowth = totalValue - totalInvested;
+  const growthPct = totalInvested > 0 ? Math.round((totalGrowth / totalValue) * 100) : 0;
+  const depositPct = 100 - growthPct;
+
+  // Time horizon comparison rows
+  function calcFV(monthly, years) {
+    const m = r / 12;
+    const n = years * 12;
+    const fv = state.simInitial * Math.pow(1 + m, n) +
+               (m > 0 ? monthly * ((Math.pow(1 + m, n) - 1) / m) : monthly * n);
+    return Math.round(fv);
+  }
+
+  const fv10 = calcFV(state.simMonthly, 10);
+  const fv20 = calcFV(state.simMonthly, 20);
+  const fv30 = calcFV(state.simMonthly, 30);
+  const dep10 = state.simInitial + state.simMonthly * 10 * 12;
+  const dep20 = state.simInitial + state.simMonthly * 20 * 12;
+  const dep30 = state.simInitial + state.simMonthly * 30 * 12;
 
   return `
     <div class="market-top-row">
@@ -1233,57 +1425,112 @@ function renderSimulatorScreen() {
         <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
       </button>
       <div>
-        <h2 style="font-size: 16px; font-weight: 800; color: #FFFFFF;">Compound Growth Simulator</h2>
-        <div style="font-size: 11px; color: #94A3B8;">Multi-decade wealth trajectory modeling</div>
+        <h2 style="font-size:16px;font-weight:800;color:#FFFFFF;">Compound Growth Simulator</h2>
+        <div style="font-size:11px;color:#94A3B8;">Simulate multi-decade compounding wealth accumulation</div>
       </div>
     </div>
 
-    <div class="cyber-card" style="border-color: rgba(251, 191, 36, 0.4); text-align: center;">
-      <div style="font-size: 11px; font-weight: 800; color: #FBBF24;">PROJECTED PORTFOLIO WEALTH</div>
-      <div style="font-size: 36px; font-weight: 900; color: #00F0FF; margin: 6px 0;">
-        £${Math.round(totalValue).toLocaleString('en-GB')}
+    <!-- Main result card -->
+    <div class="sim-result-card">
+      <div class="sim-result-label">HYPOTHETICAL PORTFOLIO VALUE IN ${state.simYears} YEARS</div>
+      <div class="sim-result-value">£${Math.round(totalValue).toLocaleString('en-GB')}</div>
+
+      <!-- Deposit vs Growth bar -->
+      <div class="sim-bar-wrap">
+        <div class="sim-bar-fill" style="width:${depositPct}%;background:linear-gradient(90deg,#00c6ff,#10B981);border-radius:6px 0 0 6px;"></div>
+        <div class="sim-bar-fill" style="width:${growthPct}%;background:linear-gradient(90deg,#10B981,#c8a96e);border-radius:0 6px 6px 0;"></div>
       </div>
-      <div style="display: flex; justify-content: space-around; font-size: 11px; color: #94A3B8; margin-top: 8px;">
-        <span>Invested: £${Math.round(totalInvested).toLocaleString('en-GB')}</span>
-        <span style="color: #10B981; font-weight: 800;">Growth: +£${Math.round(totalGrowth).toLocaleString('en-GB')}</span>
+      <div class="sim-split-row">
+        <span>Your Deposits<br><strong style="color:#00c6ff;">£${Math.round(totalInvested).toLocaleString('en-GB')}</strong></span>
+        <span style="text-align:right;">Compound Growth (${growthPct}%)<br><strong style="color:#c8a96e;">£${Math.round(totalGrowth).toLocaleString('en-GB')}</strong></span>
       </div>
     </div>
 
-    <div class="cyber-card" style="display: flex; flex-direction: column; gap: 14px;">
-      <div>
-        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
-          <span>Initial Lump Sum (£)</span>
-          <span style="color: #00F0FF; font-weight: 800;">£${state.simInitial}</span>
+    <!-- Controls card -->
+    <div class="sim-controls-card">
+
+      <!-- Monthly Contribution -->
+      <div class="sim-control-group">
+        <div class="sim-control-header">
+          <span class="sim-control-label">Monthly Contribution</span>
+          <span class="sim-control-value" style="color:#00c6ff;">£${state.simMonthly} / month</span>
         </div>
-        <input type="range" min="0" max="50000" step="500" value="${state.simInitial}" oninput="window.updateSim('simInitial', this.value)" style="width: 100%;" />
+        <input type="range" class="sim-slider" min="0" max="2000" step="50" value="${state.simMonthly}"
+          oninput="window.updateSim('simMonthly', this.value)" />
+        <div class="sim-preset-row">
+          ${[50, 100, 250, 500].map(v => `
+            <button class="sim-preset-btn ${state.simMonthly == v ? 'active' : ''}"
+              onclick="window.updateSim('simMonthly', ${v})">£${v}</button>
+          `).join('')}
+        </div>
       </div>
 
-      <div>
-        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
-          <span>Monthly Contribution (£)</span>
-          <span style="color: #00F0FF; font-weight: 800;">£${state.simMonthly} / month</span>
+      <!-- Investment Period -->
+      <div class="sim-control-group">
+        <div class="sim-control-header">
+          <span class="sim-control-label">Investment Period</span>
+          <span class="sim-control-value" style="color:#00c6ff;">${state.simYears} years</span>
         </div>
-        <input type="range" min="50" max="2500" step="50" value="${state.simMonthly}" oninput="window.updateSim('simMonthly', this.value)" style="width: 100%;" />
+        <input type="range" class="sim-slider" min="5" max="40" step="5" value="${state.simYears}"
+          oninput="window.updateSim('simYears', this.value)" />
+        <div class="sim-preset-row">
+          ${[10, 20, 30, 40].map(v => `
+            <button class="sim-preset-btn ${state.simYears == v ? 'active' : ''}"
+              onclick="window.updateSim('simYears', ${v})">${v} yrs</button>
+          `).join('')}
+        </div>
       </div>
 
-      <div>
-        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
-          <span>Investment Horizon</span>
-          <span style="color: #FBBF24; font-weight: 800;">${state.simYears} Years</span>
+      <!-- Annual Return -->
+      <div class="sim-control-group">
+        <div class="sim-control-header">
+          <span class="sim-control-label">Hypothetical Annual Return</span>
+          <span class="sim-control-value" style="color:#10B981;">${parseFloat(state.simRate).toFixed(1)}% p.a.</span>
         </div>
-        <input type="range" min="5" max="40" step="1" value="${state.simYears}" oninput="window.updateSim('simYears', this.value)" style="width: 100%;" />
+        <input type="range" class="sim-slider" min="3" max="15" step="0.5" value="${state.simRate}"
+          oninput="window.updateSim('simRate', this.value)" />
       </div>
+    </div>
 
-      <div>
-        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
-          <span>Estimated Annual Return (%)</span>
-          <span style="color: #10B981; font-weight: 800;">${state.simRate}%</span>
+    <!-- Time Horizon Comparison Table -->
+    <div class="cyber-card" style="margin-top:16px;">
+      <div style="font-size:15px;font-weight:800;color:#FFFFFF;margin-bottom:4px;">Time Horizon Compounding Comparison</div>
+      <div style="font-size:12px;color:#94A3B8;margin-bottom:16px;">At £${state.simMonthly}/month and ${parseFloat(state.simRate).toFixed(1)}% annual average return:</div>
+
+      <div class="sim-comparison-row" style="border-bottom:1px solid rgba(255,255,255,0.07);padding-bottom:14px;margin-bottom:14px;">
+        <div>
+          <div style="font-size:15px;font-weight:800;color:#FFFFFF;">10 Years</div>
+          <div style="font-size:12px;color:#94A3B8;">Deposited: £${dep10.toLocaleString('en-GB')}</div>
         </div>
-        <input type="range" min="3.0" max="15.0" step="0.5" value="${state.simRate}" oninput="window.updateSim('simRate', this.value)" style="width: 100%;" />
+        <div style="font-size:20px;font-weight:900;color:#00c6ff;">£${fv10.toLocaleString('en-GB')}</div>
+      </div>
+      <div class="sim-comparison-row" style="border-bottom:1px solid rgba(255,255,255,0.07);padding-bottom:14px;margin-bottom:14px;">
+        <div>
+          <div style="font-size:15px;font-weight:800;color:#FFFFFF;">20 Years</div>
+          <div style="font-size:12px;color:#94A3B8;">Deposited: £${dep20.toLocaleString('en-GB')}</div>
+        </div>
+        <div style="font-size:20px;font-weight:900;color:#00c6ff;">£${fv20.toLocaleString('en-GB')}</div>
+      </div>
+      <div class="sim-comparison-row">
+        <div>
+          <div style="font-size:15px;font-weight:800;color:#FFFFFF;">30 Years</div>
+          <div style="font-size:12px;color:#94A3B8;">Deposited: £${dep30.toLocaleString('en-GB')}</div>
+        </div>
+        <div style="font-size:20px;font-weight:900;color:#00c6ff;">£${fv30.toLocaleString('en-GB')}</div>
+      </div>
+    </div>
+
+    <!-- Regulatory Notice -->
+    <div class="reg-notice-card" style="margin-top:16px;">
+      <div class="reg-notice-icon">ℹ</div>
+      <div class="reg-notice-text">
+        <strong>Regulatory & Educational Notice</strong><br>
+        EB Wealth provides analytical intelligence and investment education. It does not provide personalized financial advice or execution brokerage. Capital is at risk; investments can fluctuate, and you may receive back less than originally invested. Regulated UK financial advice should be sought for personal decisions.
       </div>
     </div>
   `;
 }
+
 
 // 9. AI WEALTH COACH SCREEN
 function renderAICoachScreen() {
@@ -1796,6 +2043,25 @@ window.updateSim = function(key, val) {
   state[key] = parseFloat(val);
   render();
 };
+
+window.toggleEtf = function(ticker) {
+  const sel = state.overlapSelected;
+  if (sel.includes(ticker)) {
+    // Remove it (keep at least 1)
+    if (sel.length > 1) {
+      state.overlapSelected = sel.filter(t => t !== ticker);
+    }
+  } else {
+    // Add — max 2 selected, replace oldest
+    if (sel.length >= 2) {
+      state.overlapSelected = [sel[1], ticker];
+    } else {
+      state.overlapSelected = [...sel, ticker];
+    }
+  }
+  render();
+};
+
 
 window.sendPrompt = function(promptText) {
   state.chatMessages.push({ sender: 'user', text: promptText });

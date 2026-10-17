@@ -1554,3 +1554,85 @@ body.mode-desktop .fab-ai-coach {
   text-align: justify;
 }
 
+
+/* ============================================================
+   NEW COMPONENTS: Trajectory Card, Tools Grid, Sim Controls
+   ============================================================ */
+
+/* ── Compounding Trajectory Card ─────────────────────────── */
+.traj-card {
+  background: linear-gradient(145deg, rgba(10,20,40,0.95) 0%, rgba(5,30,50,0.9) 100%);
+  border: 1.5px solid rgba(0,198,255,0.25);
+  border-radius: 18px;
+  padding: 18px 16px 14px;
+  margin-top: 4px;
+  transition: border-color 0.2s;
+}
+.traj-card:hover { border-color: rgba(200,169,110,0.5); }
+.traj-label { font-size:11px; font-weight:800; color:#c8a96e; letter-spacing:0.8px; margin-bottom:6px; }
+.traj-value { font-size:36px; font-weight:900; color:#FFFFFF; line-height:1; margin-bottom:4px; }
+.traj-subtitle { font-size:12px; color:#94A3B8; margin-bottom:12px; }
+.traj-chart-wrap { position:relative; margin:0 -4px; }
+.traj-axis-row { display:flex; justify-content:space-between; font-size:11px; color:#94A3B8; padding:4px 4px 0; font-weight:600; }
+.traj-bottom-strip { display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.07); }
+.traj-strip-label { font-size:10px; font-weight:700; color:#94A3B8; letter-spacing:0.4px; margin-bottom:2px; }
+.traj-strip-value { font-size:22px; font-weight:900; color:#FFFFFF; }
+.traj-gain-badge { background:rgba(16,185,129,0.15); border:1px solid #10B981; color:#10B981; font-size:12px; font-weight:800; padding:6px 12px; border-radius:20px; }
+.traj-strip-row2 { display:flex; justify-content:space-between; font-size:12px; color:#94A3B8; margin-top:8px; }
+.traj-strip-row2 strong { color:#FFFFFF; }
+
+/* ── Analytics & Wealth Tools 2x2 Grid ─────────────────── */
+.tools-grid-2x2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+.tool-card {
+  background:rgba(10,20,40,0.92);
+  border:1.5px solid rgba(255,255,255,0.08);
+  border-radius:16px;
+  padding:14px 12px;
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  transition:border-color 0.2s, transform 0.15s;
+  position:relative;
+}
+.tool-card:hover { border-color:rgba(0,198,255,0.4); transform:translateY(-2px); }
+.tool-card-arrow { position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:20px; color:rgba(255,255,255,0.2); }
+.tool-icon-box { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.tool-icon-cyan  { background:rgba(0,198,255,0.15); color:#00c6ff; }
+.tool-icon-green { background:rgba(16,185,129,0.15); color:#10B981; }
+.tool-icon-gold  { background:rgba(200,169,110,0.15); color:#c8a96e; }
+.tool-icon-blue  { background:rgba(59,130,246,0.15); color:#3B82F6; }
+.tool-card-title { font-size:14px; font-weight:800; color:#FFFFFF; line-height:1.2; }
+.tool-card-sub   { font-size:11px; color:#94A3B8; line-height:1.4; margin-top:2px; }
+.tool-card-text  { flex:1; }
+
+/* ── Regulatory Notice ─────────────────────────────────── */
+.reg-notice-card { display:flex; gap:12px; align-items:flex-start; background:rgba(0,198,255,0.05); border:1px solid rgba(0,198,255,0.2); border-radius:14px; padding:14px; margin-top:8px; }
+.reg-notice-icon { width:28px; height:28px; border-radius:50%; background:rgba(0,198,255,0.15); color:#00c6ff; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:900; flex-shrink:0; }
+.reg-notice-text { font-size:12px; color:#94A3B8; line-height:1.6; }
+.reg-notice-text strong { color:#CBD5E1; }
+
+/* ── Compound Simulator New Controls ────────────────────── */
+.sim-result-card { background:linear-gradient(145deg,rgba(10,25,50,0.95),rgba(5,20,40,0.9)); border:1.5px solid rgba(200,169,110,0.35); border-radius:18px; padding:18px 16px 14px; margin-top:4px; }
+.sim-result-label { font-size:11px; font-weight:800; color:#c8a96e; letter-spacing:0.8px; margin-bottom:8px; }
+.sim-result-value { font-size:40px; font-weight:900; color:#FFFFFF; line-height:1; margin-bottom:14px; }
+.sim-bar-wrap { display:flex; height:8px; border-radius:6px; overflow:hidden; background:rgba(255,255,255,0.06); margin-bottom:10px; }
+.sim-bar-fill { height:100%; }
+.sim-split-row { display:flex; justify-content:space-between; font-size:12px; color:#94A3B8; }
+.sim-split-row strong { font-size:14px; font-weight:800; }
+
+.sim-controls-card { background:rgba(10,20,40,0.9); border:1.5px solid rgba(255,255,255,0.08); border-radius:18px; padding:18px 16px; margin-top:10px; display:flex; flex-direction:column; gap:20px; }
+.sim-control-group { display:flex; flex-direction:column; gap:8px; }
+.sim-control-header { display:flex; justify-content:space-between; align-items:center; }
+.sim-control-label { font-size:13px; font-weight:700; color:#FFFFFF; }
+.sim-control-value { font-size:13px; font-weight:800; }
+
+.sim-slider { width:100%; height:6px; border-radius:4px; outline:none; cursor:pointer; -webkit-appearance:none; accent-color:#00c6ff; }
+.sim-slider::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:#00c6ff; border:2px solid #040B14; box-shadow:0 0 6px rgba(0,198,255,0.6); cursor:pointer; }
+
+.sim-preset-row { display:flex; gap:8px; }
+.sim-preset-btn { flex:1; padding:9px 4px; border-radius:10px; font-size:13px; font-weight:800; cursor:pointer; border:1.5px solid rgba(255,255,255,0.12); background:rgba(255,255,255,0.05); color:#94A3B8; transition:all 0.15s; }
+.sim-preset-btn.active { background:#00c6ff; color:#040B14; border-color:#00c6ff; }
+.sim-preset-btn:hover:not(.active) { border-color:rgba(0,198,255,0.4); color:#FFFFFF; }
+
+.sim-comparison-row { display:flex; justify-content:space-between; align-items:center; }
