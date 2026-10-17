@@ -3,19 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>EB Wealth — Institutional UK Investment & Wealth Vault</title>
+  <meta name="theme-color" content="#c8a96e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="EB Wealth">
+  <title>EB Wealth — UK Investment Platform</title>
+  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="styles.css">
-  <link rel="icon" href="assets/img_cosmic_bg.jpg" type="image/jpeg">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body>
-  <!-- Luxury Cosmic Wallpaper & Dark Gradient Overlay -->
-  <div class="cosmic-bg"></div>
-  <div class="cosmic-overlay"></div>
-
-  <!-- Main Web App Root -->
   <div id="app"></div>
-
-  <!-- Web App Application Logic -->
   <script type="module" src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+  </script>
 </body>
 </html>
