@@ -20,10 +20,22 @@ let state = {
   simRate: 7.0,
   newsCategory: 'All',
   registeredEvents: [1],
-  user: firebaseService.currentUser || {
+  authMode: 'login', // 'login' | 'register'
+  authError: '',
+  authLoading: false,
+  authPasswordVisible: false,
+  onboardingStep: 1,
+  onboardingData: {
+    experience: 'Beginner',
+    goal: 'Build long-term wealth',
+    horizon: '20+ years',
+    capacity: '£150–£500',
+    risk: 'Medium-High'
+  },
+  user: JSON.parse(localStorage.getItem('eb_user_profile') || 'null') || firebaseService.currentUser || {
     id: 'usr_8849_gb',
-    firstName: 'Johnkennedy',
-    email: 'johnkennedy3313@gmail.com',
+    firstName: 'Alex',
+    email: 'alex.investor@example.co.uk',
     ref: 'REF: EB-8849-GB',
     region: 'United Kingdom • GBP Base',
     tierStatus: 'Standard Investor',
@@ -33,7 +45,17 @@ let state = {
     capitalGainsLimit: 3000,
     dividendLimit: 500,
     xp: 350,
-    streakDays: 4
+    streakDays: 4,
+    ageRange: '25–34',
+    country: 'United Kingdom',
+    experienceLevel: 'Beginner',
+    primaryGoal: 'Build long-term wealth',
+    timeHorizon: '20+ years',
+    monthlyCapacity: '£150–£500',
+    riskProfile: 'Medium-High',
+    levelNumber: 1,
+    levelTitle: 'Investor Starter',
+    isLoggedIn: true
   },
   holdings: JSON.parse(localStorage.getItem('eb_holdings') || 'null') || [
     { ticker: 'VWRP', name: 'Vanguard FTSE All-World UCITS ETF', assetType: 'ETF', shares: 45, avgBuyPrice: 104.20, currentPrice: 112.40, category: 'Global Equities', currency: 'GBP' },
@@ -364,6 +386,7 @@ function renderDesktopNavbar() {
           <li><button class="desktop-nav-item ${v === 'ai_coach' ? 'active' : ''}" onclick="window.navigateTo('ai_coach')">AI Coach</button></li>
           <li><button class="desktop-nav-item ${v === 'community' ? 'active' : ''}" onclick="window.navigateTo('community')">Community</button></li>
           <li><button class="desktop-nav-item ${v === 'events' ? 'active' : ''}" onclick="window.navigateTo('events')">Events</button></li>
+          <li><button class="desktop-nav-item ${v === 'auth' ? 'active' : ''}" onclick="window.navigateTo('auth')">Sign In</button></li>
           <li><button class="desktop-nav-item ${v === 'admin' ? 'active' : ''}" onclick="window.navigateTo('admin')">Admin</button></li>
         </ul>
       </nav>
@@ -460,6 +483,7 @@ function renderBottomDock() {
 function renderCurrentScreen() {
   switch (state.currentView) {
     case 'landing': return renderLandingPage();
+    case 'auth': return renderAuthScreen();
     case 'home': return renderHomeScreen();
     case 'market': return renderMarketScreen();
     case 'asset_detail': return renderAssetDetailScreen();
@@ -500,12 +524,15 @@ function renderLandingPage() {
         </p>
 
         <div class="hero-cta-group">
-          <button class="btn-primary-glow" onclick="window.navigateTo('onboarding')">
+          <button class="btn-primary-glow" onclick="window.navigateTo('auth'); window.setAuthMode('register');">
             Start Learning Free →
           </button>
           <button class="btn-secondary-glass" onclick="window.navigateTo('home')">
             Launch EB Wealth App
           </button>
+        </div>
+        <div style="margin-top: 14px; font-size: 13px; color: #94A3B8;">
+          Already have an account? <span onclick="window.navigateTo('auth'); window.setAuthMode('login');" style="color: #00F0FF; font-weight: 700; cursor: pointer; text-decoration: underline;">Sign In to Vault</span>
         </div>
 
         <!-- Interactive Mockup Preview -->
@@ -1808,11 +1835,81 @@ function renderProfileScreen() {
       </div>
     </div>
 
-    <!-- INVESTOR SUITABILITY MANDATE Card (Screenshot 1) -->
-    <div class="cyber-card" onclick="window.navigateTo('onboarding')" style="cursor: pointer;">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-size: 12px; font-weight: 800; color: #00F0FF; letter-spacing: 0.5px;">INVESTOR SUITABILITY MANDATE</span>
-        <span style="font-size: 12px; color: #00F0FF; font-weight: 800;">Recalibrate →</span>
+    <!-- INVESTOR SUITABILITY MANDATE Card (Screenshot 1 & ProfileScreen.kt) -->
+    <div class="cyber-card" style="border-color: rgba(56, 189, 248, 0.45);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <span style="font-size: 11px; font-weight: 800; color: #38BDF8; letter-spacing: 0.8px;">INVESTOR SUITABILITY MANDATE</span>
+        <button onclick="window.navigateTo('onboarding')" style="background: none; border: none; font-size: 12px; color: #00F0FF; font-weight: 800; cursor: pointer; padding: 2px 6px;">Recalibrate →</button>
+      </div>
+
+      <div class="bank-detail-row">
+        <span class="bank-detail-label">Investment Experience</span>
+        <span class="bank-detail-value">${state.user.experienceLevel || 'Beginner'}</span>
+      </div>
+      <div class="bank-detail-row">
+        <span class="bank-detail-label">Primary Financial Goal</span>
+        <span class="bank-detail-value">${state.user.primaryGoal || 'Build long-term wealth'}</span>
+      </div>
+      <div class="bank-detail-row">
+        <span class="bank-detail-label">Investment Time Horizon</span>
+        <span class="bank-detail-value">${state.user.timeHorizon || '20+ years'}</span>
+      </div>
+      <div class="bank-detail-row">
+        <span class="bank-detail-label">Monthly Allocation Capacity</span>
+        <span class="bank-detail-value">${state.user.monthlyCapacity || '£150–£500'}</span>
+      </div>
+      <div class="bank-detail-row">
+        <span class="bank-detail-label">Risk Tolerance Calibration</span>
+        <span class="bank-detail-value" style="color: #00F0FF;">${state.user.riskProfile || 'Medium-High'}</span>
+      </div>
+      <div class="bank-detail-row">
+        <span class="bank-detail-label">Investor Academy Status</span>
+        <span class="bank-detail-value" style="color: #FBBF24;">Tier ${state.user.levelNumber || 1} (${state.user.levelTitle || 'Investor Starter'})</span>
+      </div>
+      <div class="bank-detail-row">
+        <span class="bank-detail-label">Total Experience XP</span>
+        <span class="bank-detail-value" style="color: #00F0FF;">${state.user.xp || 350} XP</span>
+      </div>
+      <div class="bank-detail-row">
+        <span class="bank-detail-label">Regulatory Jurisdiction</span>
+        <span class="bank-detail-value">United Kingdom (FCA / PRA)</span>
+      </div>
+    </div>
+
+    <!-- BANK-GRADE SECURITY & PROTECTION Card (ProfileScreen.kt) -->
+    <div class="cyber-card" style="border-color: rgba(16, 185, 129, 0.35);">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+        <span style="color: #34D399; font-size: 16px;">🛡️</span>
+        <span style="font-size: 11px; font-weight: 800; color: #FFFFFF; letter-spacing: 0.8px;">BANK-GRADE SECURITY & PROTECTION</span>
+      </div>
+
+      <div class="bank-security-row">
+        <div class="bank-security-left">
+          <div class="bank-security-icon">🛡️</div>
+          <span class="bank-security-title">FSCS Protection</span>
+        </div>
+        <span class="bank-security-val">Covered up to £85,000</span>
+      </div>
+      <div class="bank-security-row">
+        <div class="bank-security-left">
+          <div class="bank-security-icon">👆</div>
+          <span class="bank-security-title">Biometrics & PIN</span>
+        </div>
+        <span class="bank-security-val">Enabled (FaceID / Fingerprint)</span>
+      </div>
+      <div class="bank-security-row">
+        <div class="bank-security-left">
+          <div class="bank-security-icon">🏛️</div>
+          <span class="bank-security-title">Linked Bank Account</span>
+        </div>
+        <span class="bank-security-val" style="color: #94A3B8;">Barclays Premier (••••4821)</span>
+      </div>
+      <div class="bank-security-row">
+        <div class="bank-security-left">
+          <div class="bank-security-icon">🔒</div>
+          <span class="bank-security-title">Encryption Protocol</span>
+        </div>
+        <span class="bank-security-val">AES-256 GCM Cloud Firestore</span>
       </div>
     </div>
 
@@ -1966,40 +2063,337 @@ function renderAdminDashboardScreen() {
   `;
 }
 
-// 15. ONBOARDING / SUITABILITY QUIZ
-function renderOnboardingScreen() {
+// 15. AUTH SCREEN (Exact 1:1 Mirror of Android AuthScreen.kt)
+function renderAuthScreen() {
+  const isReg = state.authMode === 'register';
   return `
-    <div class="market-top-row">
-      <button class="back-btn-circle" onclick="window.navigateBack()">
-        <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-      </button>
-      <div>
-        <h2 style="font-size: 16px; font-weight: 800; color: #FFFFFF;">Investor Suitability Questionnaire</h2>
-        <div style="font-size: 11px; color: #94A3B8;">FCA-mandated risk profiling assessment</div>
+    <div class="auth-screen-container">
+      <!-- Cosmic Brand Emblem -->
+      <div class="auth-emblem-box">EB</div>
+      <div class="auth-brand-title">
+        <span class="eb">EB</span>
+        <span class="wealth">Wealth</span>
+      </div>
+      <div class="auth-brand-sub">
+        Institutional-Grade Investment Education & Intelligence
+      </div>
+
+      <!-- Bank-Style Card Container -->
+      <div class="auth-card">
+        <!-- Google Sign-In One-Tap Button -->
+        <button type="button" class="auth-google-btn" onclick="window.handleGoogleSignIn()">
+          <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+          </svg>
+          <span>Sign in with Google</span>
+        </button>
+
+        <div class="auth-divider-row">
+          <div class="auth-divider-line"></div>
+          <span class="auth-divider-text">OR USE CLIENT VAULT</span>
+          <div class="auth-divider-line"></div>
+        </div>
+
+        <!-- Sign In / Register Segmented Toggle -->
+        <div class="auth-tab-toggle">
+          <button type="button" class="auth-tab-btn ${!isReg ? 'active' : ''}" onclick="window.setAuthMode('login')">
+            Sign In
+          </button>
+          <button type="button" class="auth-tab-btn ${isReg ? 'active' : ''}" onclick="window.setAuthMode('register')">
+            Create Account
+          </button>
+        </div>
+
+        ${state.authError ? `
+          <div class="auth-error-banner">
+            <svg style="width:16px;height:16px;flex-shrink:0;" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+            </svg>
+            <span>${state.authError}</span>
+          </div>
+        ` : ''}
+
+        <form id="auth-form" onsubmit="window.handleAuthSubmit(event)">
+          ${isReg ? `
+            <div class="auth-field-group">
+              <label class="auth-field-label">FULL LEGAL FIRST NAME</label>
+              <div class="auth-input-wrap">
+                <svg class="auth-input-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                <input type="text" id="auth-firstname" required placeholder="e.g. Charlotte" class="auth-input" />
+              </div>
+            </div>
+          ` : ''}
+
+          <div class="auth-field-group">
+            <label class="auth-field-label">EMAIL ADDRESS</label>
+            <div class="auth-input-wrap">
+              <svg class="auth-input-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+              <input type="email" id="auth-email" required placeholder="e.g. name@example.co.uk" class="auth-input" value="${state.user?.email || ''}" />
+            </div>
+          </div>
+
+          <div class="auth-field-group">
+            <label class="auth-field-label">ACCOUNT PASSWORD</label>
+            <div class="auth-input-wrap">
+              <svg class="auth-input-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+              <input type="${state.authPasswordVisible ? 'text' : 'password'}" id="auth-password" required placeholder="Minimum 6 characters" class="auth-input" />
+              <button type="button" class="auth-password-toggle" onclick="window.toggleAuthPasswordVisibility()">
+                ${state.authPasswordVisible ? '👁️' : '🔒'}
+              </button>
+            </div>
+          </div>
+
+          ${isReg ? `
+            <div class="auth-two-col">
+              <div class="auth-field-group">
+                <label class="auth-field-label">AGE GROUP</label>
+                <div class="auth-input-wrap">
+                  <input type="text" id="auth-age" value="25–34" class="auth-input" style="padding-left:14px;" />
+                </div>
+              </div>
+              <div class="auth-field-group">
+                <label class="auth-field-label">RESIDENCE</label>
+                <div class="auth-input-wrap">
+                  <input type="text" id="auth-residence" value="United Kingdom" class="auth-input" style="padding-left:14px;" />
+                </div>
+              </div>
+            </div>
+          ` : ''}
+
+          <button type="submit" class="auth-submit-btn" ${state.authLoading ? 'disabled' : ''}>
+            ${state.authLoading ? 'Authenticating...' : (isReg ? 'Register & Start Onboarding' : 'Sign In to Vault')}
+          </button>
+        </form>
+
+        <div class="auth-footer-link" onclick="window.setAuthMode('${isReg ? 'login' : 'register'}')">
+          ${isReg ? 'Already have an account? <strong>Sign In</strong>' : 'Don\'t have an account? <strong>Create one now</strong>'}
+        </div>
+      </div>
+
+      <!-- Security Assurance Banner -->
+      <div class="auth-security-notice">
+        <span style="font-size:22px; color:#34D399;">☁️</span>
+        <div>
+          <div style="font-size:12px; font-weight:800; color:#FFFFFF;">Firebase Firestore Cloud Encrypted Vault</div>
+          <div style="font-size:11px; color:#94A3B8; margin-top:2px; line-height:1.4;">
+            Protected by Google Cloud Firestore with real-time replication. All user accounts and investment portfolios are safely synced to the cloud.
+          </div>
+        </div>
       </div>
     </div>
+  `;
+}
 
-    <div class="cyber-card">
-      <div style="font-size: 13px; font-weight: 800; color: #FFFFFF; margin-bottom: 8px;">1. Investment Time Horizon</div>
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        <label style="font-size: 12px; color: #CBD5E1;"><input type="radio" name="horizon" checked /> 10+ Years (Long-Term Compounding)</label>
-        <label style="font-size: 12px; color: #CBD5E1;"><input type="radio" name="horizon" /> 5-10 Years (Balanced Growth)</label>
-        <label style="font-size: 12px; color: #CBD5E1;"><input type="radio" name="horizon" /> Under 5 Years (Capital Preservation)</label>
+// 16. ONBOARDING / SUITABILITY QUESTIONNAIRE (Exact 1:1 Mirror of Android OnboardingScreen.kt)
+function renderOnboardingScreen() {
+  const step = state.onboardingStep || 1;
+  const progressPct = ((step / 6) * 100).toFixed(0);
+
+  const step1Options = [
+    { label: "Complete beginner", desc: "Never invested before, want to learn fundamentals" },
+    { label: "Beginner", desc: "Have heard of ISAs/stocks, looking to start properly" },
+    { label: "Intermediate", desc: "Currently investing, want to optimize portfolio & overlap" },
+    { label: "Experienced", desc: "Active investor focusing on advanced asset allocation" }
+  ];
+
+  const step2Options = [
+    { label: "Build long-term wealth", desc: "Compounding over decades for financial security" },
+    { label: "Retirement", desc: "Supplementing state & workplace pensions with a SIPP/ISA" },
+    { label: "Financial independence", desc: "Building passive investment cash flow" },
+    { label: "Children's future", desc: "Starting a Junior ISA (JISA) for university or a house deposit" },
+    { label: "General investing", desc: "Growing surplus savings faster than inflation" },
+    { label: "Learn before investing", desc: "Gaining confidence before committing capital" }
+  ];
+
+  const step3Options = [
+    { label: "Less than 5 years", desc: "Short-term horizon (Cash ISA or fixed bonds recommended)" },
+    { label: "5–10 years", desc: "Medium-term growth with balanced allocation" },
+    { label: "10–20 years", desc: "Strong compounding horizon allowing equity focus" },
+    { label: "20+ years", desc: "Maximum compounding potential for generational wealth" }
+  ];
+
+  const step4Options = [
+    { label: "£50–£150 / month", desc: "Ideal starting amount to automate via direct debit" },
+    { label: "£150–£500 / month", desc: "Solid monthly contributions for compound acceleration" },
+    { label: "£500–£1,000 / month", desc: "Substantial pace utilizing significant ISA allowance" },
+    { label: "£1,000+ / month", desc: "Maximizing annual £20,000 UK ISA allowance" }
+  ];
+
+  const step5Options = [
+    { label: "Conservative", sub: "Very Uncomfortable", desc: "I would worry constantly and want to pull money out" },
+    { label: "Moderate", sub: "Slightly Uncomfortable", desc: "I'd feel nervous but try to wait it out" },
+    { label: "Medium-High", sub: "Medium-High Comfort", desc: "I understand volatility is normal and would keep investing" },
+    { label: "High", sub: "High Comfort", desc: "I'd view it as a discount sale and invest more if possible" }
+  ];
+
+  return `
+    <div class="onboarding-screen-wrap">
+      <!-- Top Step Header -->
+      <div class="onboarding-top-bar">
+        <span class="onboarding-step-badge">STEP ${step} OF 6</span>
+        ${step < 6 ? `
+          <button class="onboarding-skip-btn" onclick="window.skipOnboarding()">Skip</button>
+        ` : ''}
       </div>
-    </div>
 
-    <div class="cyber-card">
-      <div style="font-size: 13px; font-weight: 800; color: #FFFFFF; margin-bottom: 8px;">2. Risk Tolerance Profile</div>
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        <label style="font-size: 12px; color: #CBD5E1;"><input type="radio" name="risk" checked /> Balanced Growth (Global ETFs & Index Funds)</label>
-        <label style="font-size: 12px; color: #CBD5E1;"><input type="radio" name="risk" /> Aggressive Expansion (Tech & Growth Stocks)</label>
-        <label style="font-size: 12px; color: #CBD5E1;"><input type="radio" name="risk" /> Conservative (Cash Equivalents & Gilts)</label>
+      <!-- Linear Progress Bar -->
+      <div class="onboarding-progress-track">
+        <div class="onboarding-progress-fill" style="width: ${progressPct}%;"></div>
       </div>
-    </div>
 
-    <button class="btn-pro-gold" style="width: 100%; padding: 14px;" onclick="window.saveSuitability()">
-      Save Updated Investor Mandate
-    </button>
+      ${step === 1 ? `
+        <div class="onboarding-card-main">
+          <h2 class="onboarding-title">What best describes you?</h2>
+          <p class="onboarding-sub">This helps tailor educational lesson depth and terminology.</p>
+          <div class="onboarding-options-list">
+            ${step1Options.map(opt => `
+              <div class="onboarding-option-row ${state.onboardingData.experience === opt.label ? 'selected' : ''}" onclick="window.setOnboardingOption('experience', '${opt.label}')">
+                <div class="onboarding-radio-dot">
+                  ${state.onboardingData.experience === opt.label ? '<div class="onboarding-radio-inner"></div>' : ''}
+                </div>
+                <div>
+                  <div class="onboarding-option-title">${opt.label}</div>
+                  <div class="onboarding-option-desc">${opt.desc}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <button class="onboarding-next-btn" onclick="window.nextOnboardingStep()">Continue →</button>
+        </div>
+      ` : ''}
+
+      ${step === 2 ? `
+        <div class="onboarding-card-main">
+          <h2 class="onboarding-title">What is your primary investment goal?</h2>
+          <p class="onboarding-sub">Long-term investing works best with clear, defined objectives.</p>
+          <div class="onboarding-options-list">
+            ${step2Options.map(opt => `
+              <div class="onboarding-option-row ${state.onboardingData.goal === opt.label ? 'selected' : ''}" onclick="window.setOnboardingOption('goal', '${opt.label}')">
+                <div class="onboarding-radio-dot">
+                  ${state.onboardingData.goal === opt.label ? '<div class="onboarding-radio-inner"></div>' : ''}
+                </div>
+                <div>
+                  <div class="onboarding-option-title">${opt.label}</div>
+                  <div class="onboarding-option-desc">${opt.desc}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <button class="onboarding-next-btn" onclick="window.nextOnboardingStep()">Continue →</button>
+        </div>
+      ` : ''}
+
+      ${step === 3 ? `
+        <div class="onboarding-card-main">
+          <h2 class="onboarding-title">How long do you plan to invest for?</h2>
+          <p class="onboarding-sub">Stock market investments require time to smooth out normal volatility.</p>
+          <div class="onboarding-options-list">
+            ${step3Options.map(opt => `
+              <div class="onboarding-option-row ${state.onboardingData.horizon === opt.label ? 'selected' : ''}" onclick="window.setOnboardingOption('horizon', '${opt.label}')">
+                <div class="onboarding-radio-dot">
+                  ${state.onboardingData.horizon === opt.label ? '<div class="onboarding-radio-inner"></div>' : ''}
+                </div>
+                <div>
+                  <div class="onboarding-option-title">${opt.label}</div>
+                  <div class="onboarding-option-desc">${opt.desc}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <button class="onboarding-next-btn" onclick="window.nextOnboardingStep()">Continue →</button>
+        </div>
+      ` : ''}
+
+      ${step === 4 ? `
+        <div class="onboarding-card-main">
+          <h2 class="onboarding-title">How much could you potentially invest each month?</h2>
+          <p class="onboarding-sub">Approximate range to calibrate simulator and compounding scenarios.</p>
+          <div class="onboarding-options-list">
+            ${step4Options.map(opt => `
+              <div class="onboarding-option-row ${state.onboardingData.capacity === opt.label ? 'selected' : ''}" onclick="window.setOnboardingOption('capacity', '${opt.label}')">
+                <div class="onboarding-radio-dot">
+                  ${state.onboardingData.capacity === opt.label ? '<div class="onboarding-radio-inner"></div>' : ''}
+                </div>
+                <div>
+                  <div class="onboarding-option-title">${opt.label}</div>
+                  <div class="onboarding-option-desc">${opt.desc}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <button class="onboarding-next-btn" onclick="window.nextOnboardingStep()">Continue →</button>
+        </div>
+      ` : ''}
+
+      ${step === 5 ? `
+        <div class="onboarding-card-main">
+          <h2 class="onboarding-title">How comfortable are you with investment fluctuations?</h2>
+          <p class="onboarding-sub">If your £10,000 investment temporarily dropped to £8,500 during a market dip:</p>
+          <div class="onboarding-options-list">
+            ${step5Options.map(opt => `
+              <div class="onboarding-option-row ${state.onboardingData.risk === opt.label ? 'selected' : ''}" onclick="window.setOnboardingOption('risk', '${opt.label}')">
+                <div class="onboarding-radio-dot">
+                  ${state.onboardingData.risk === opt.label ? '<div class="onboarding-radio-inner"></div>' : ''}
+                </div>
+                <div>
+                  <div class="onboarding-option-title">${opt.sub} (${opt.label})</div>
+                  <div class="onboarding-option-desc">${opt.desc}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <button class="onboarding-next-btn" onclick="window.nextOnboardingStep()">Generate Profile →</button>
+        </div>
+      ` : ''}
+
+      ${step === 6 ? `
+        <div class="onboarding-card-main" style="text-align: center;">
+          <div style="width: 58px; height: 58px; border-radius: 16px; background: rgba(16, 185, 129, 0.2); border: 1.5px solid #10B981; display: inline-flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 12px; box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);">
+            🛡️
+          </div>
+          <div style="font-size: 11px; font-weight: 800; color: #FBBF24; letter-spacing: 1px;">EB INVESTOR PROFILE</div>
+          <h2 style="font-size: 22px; font-weight: 900; color: #FFFFFF; margin: 4px 0 6px;">Your Profile is Ready!</h2>
+          <p style="font-size: 12px; color: #94A3B8; margin-bottom: 20px;">
+            Here is your baseline educational profile calibrated to your goals and risk preferences.
+          </p>
+
+          <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(0, 240, 255, 0.3); border-radius: 14px; padding: 16px; text-align: left; margin-bottom: 16px;">
+            <div class="bank-detail-row">
+              <span class="bank-detail-label">Experience Level</span>
+              <span class="bank-detail-value">${state.onboardingData.experience}</span>
+            </div>
+            <div class="bank-detail-row">
+              <span class="bank-detail-label">Primary Goal</span>
+              <span class="bank-detail-value">${state.onboardingData.goal}</span>
+            </div>
+            <div class="bank-detail-row">
+              <span class="bank-detail-label">Time Horizon</span>
+              <span class="bank-detail-value">${state.onboardingData.horizon}</span>
+            </div>
+            <div class="bank-detail-row">
+              <span class="bank-detail-label">Monthly Target</span>
+              <span class="bank-detail-value">${state.onboardingData.capacity}</span>
+            </div>
+            <div class="bank-detail-row">
+              <span class="bank-detail-label">Risk Profile</span>
+              <span class="bank-detail-value" style="color: #00F0FF;">${state.onboardingData.risk}</span>
+            </div>
+            <div class="bank-detail-row">
+              <span class="bank-detail-label">Starting Level</span>
+              <span class="bank-detail-value" style="color: #FBBF24;">Level 1 — Investor Starter (+100 XP)</span>
+            </div>
+          </div>
+
+          <div style="background: rgba(0, 240, 255, 0.06); border-radius: 10px; padding: 12px; font-size: 11px; color: #94A3B8; line-height: 1.5; margin-bottom: 20px; text-align: left;">
+            <strong>Disclaimer:</strong> This educational profile is designed to customize your learning journey. It does not constitute personal financial advice or a suitability assessment under UK financial regulations.
+          </div>
+
+          <button class="onboarding-next-btn" onclick="window.finishOnboarding()">
+            Complete Onboarding & Enter Vault →
+          </button>
+        </div>
+      ` : ''}
+    </div>
   `;
 }
 
@@ -2227,9 +2621,193 @@ window.triggerCloudSync = async function() {
   render();
 };
 
+// ── Auth & Onboarding Handlers (Mirroring Android Auth & Onboarding) ──
+window.setAuthMode = function(mode) {
+  state.authMode = mode;
+  state.authError = '';
+  render();
+};
+
+window.toggleAuthPasswordVisibility = function() {
+  state.authPasswordVisible = !state.authPasswordVisible;
+  render();
+};
+
+window.handleGoogleSignIn = async function() {
+  state.authLoading = true;
+  state.authError = '';
+  render();
+  try {
+    const demoGoogleUser = {
+      id: 'usr_google_' + Math.random().toString(36).substring(2, 8),
+      firstName: state.user?.firstName || 'Alex',
+      email: state.user?.email || 'alex.investor@example.co.uk',
+      ref: 'REF: EB-8849-GB',
+      region: 'United Kingdom • GBP Base',
+      tierStatus: 'Standard Investor',
+      isPro: false,
+      isaUsed: 8450,
+      isaLimit: 20000,
+      capitalGainsLimit: 3000,
+      dividendLimit: 500,
+      xp: 350,
+      streakDays: 4,
+      ageRange: '25–34',
+      country: 'United Kingdom',
+      experienceLevel: state.onboardingData.experience || 'Beginner',
+      primaryGoal: state.onboardingData.goal || 'Build long-term wealth',
+      timeHorizon: state.onboardingData.horizon || '20+ years',
+      monthlyCapacity: state.onboardingData.capacity || '£150–£500',
+      riskProfile: state.onboardingData.risk || 'Medium-High',
+      levelNumber: 1,
+      levelTitle: 'Investor Starter',
+      isLoggedIn: true
+    };
+    state.user = demoGoogleUser;
+    localStorage.setItem('eb_user_profile', JSON.stringify(demoGoogleUser));
+    await firebaseService.syncProfile(demoGoogleUser);
+    state.authLoading = false;
+    state.currentView = 'home';
+    render();
+  } catch (e) {
+    state.authLoading = false;
+    state.authError = e.message || 'Failed to authenticate via Google';
+    render();
+  }
+};
+
+window.handleAuthSubmit = async function(e) {
+  e.preventDefault();
+  state.authLoading = true;
+  state.authError = '';
+  render();
+
+  const email = (document.getElementById('auth-email')?.value || '').trim();
+  const password = (document.getElementById('auth-password')?.value || '').trim();
+  const isReg = state.authMode === 'register';
+
+  if (!email || !password) {
+    state.authLoading = false;
+    state.authError = 'Please enter both email and password.';
+    render();
+    return;
+  }
+
+  if (password.length < 6) {
+    state.authLoading = false;
+    state.authError = 'Password must be at least 6 characters.';
+    render();
+    return;
+  }
+
+  try {
+    if (isReg) {
+      const firstName = (document.getElementById('auth-firstname')?.value || '').trim() || 'Investor';
+      const ageRange = (document.getElementById('auth-age')?.value || '25–34').trim();
+      const country = (document.getElementById('auth-residence')?.value || 'United Kingdom').trim();
+
+      const newUser = {
+        id: 'usr_' + Math.random().toString(36).substring(2, 9),
+        firstName: firstName,
+        email: email,
+        ref: 'REF: EB-' + Math.floor(1000 + Math.random() * 9000) + '-GB',
+        region: `${country} • GBP Base`,
+        tierStatus: 'Standard Investor',
+        isPro: false,
+        isaUsed: 0,
+        isaLimit: 20000,
+        capitalGainsLimit: 3000,
+        dividendLimit: 500,
+        xp: 100,
+        streakDays: 1,
+        ageRange: ageRange,
+        country: country,
+        experienceLevel: 'Beginner',
+        primaryGoal: 'Build long-term wealth',
+        timeHorizon: '20+ years',
+        monthlyCapacity: '£150–£500',
+        riskProfile: 'Medium-High',
+        levelNumber: 1,
+        levelTitle: 'Investor Starter',
+        isLoggedIn: true
+      };
+
+      state.user = newUser;
+      localStorage.setItem('eb_user_profile', JSON.stringify(newUser));
+      await firebaseService.signUp(email, password, firstName);
+
+      state.authLoading = false;
+      state.onboardingStep = 1;
+      state.currentView = 'onboarding';
+      render();
+    } else {
+      const res = await firebaseService.signIn(email, password);
+      const signedInUser = {
+        ...state.user,
+        email: email,
+        firstName: res.user?.firstName || state.user.firstName || 'Investor',
+        isLoggedIn: true
+      };
+      state.user = signedInUser;
+      localStorage.setItem('eb_user_profile', JSON.stringify(signedInUser));
+      state.authLoading = false;
+      state.currentView = 'home';
+      render();
+    }
+  } catch (err) {
+    state.authLoading = false;
+    state.authError = err.message || 'Authentication failed. Please verify credentials.';
+    render();
+  }
+};
+
+window.setOnboardingOption = function(key, value) {
+  state.onboardingData[key] = value;
+  render();
+};
+
+window.nextOnboardingStep = function() {
+  if (state.onboardingStep < 6) {
+    state.onboardingStep++;
+    render();
+  }
+};
+
+window.skipOnboarding = function() {
+  state.onboardingStep = 6;
+  render();
+};
+
+window.finishOnboarding = async function() {
+  state.user.experienceLevel = state.onboardingData.experience;
+  state.user.primaryGoal = state.onboardingData.goal;
+  state.user.timeHorizon = state.onboardingData.horizon;
+  state.user.monthlyCapacity = state.onboardingData.capacity;
+  state.user.riskProfile = state.onboardingData.risk;
+  state.user.xp = (state.user.xp || 250) + 100;
+  state.user.isOnboarded = true;
+  state.user.levelNumber = 1;
+  state.user.levelTitle = 'Investor Starter';
+
+  localStorage.setItem('eb_user_profile', JSON.stringify(state.user));
+  try {
+    await firebaseService.syncProfile(state.user);
+  } catch (e) {
+    console.warn('Sync profile on onboarding finish:', e);
+  }
+
+  state.currentView = 'home';
+  render();
+};
+
 window.signOut = function() {
   if (confirm('Sign out from EB Wealth?')) {
-    state.currentView = 'home';
+    firebaseService.signOut();
+    if (state.user) {
+      state.user.isLoggedIn = false;
+    }
+    state.authMode = 'login';
+    state.currentView = 'auth';
     render();
   }
 };
