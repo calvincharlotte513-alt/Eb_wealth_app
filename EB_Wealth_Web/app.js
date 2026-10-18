@@ -14,10 +14,11 @@ let state = {
   selectedLevel: 1,
   marketSearchQuery: '',
   overlapSelected: ['VWRP', 'VUAG'],
-  simInitial: 5000,
-  simMonthly: 500,
+  simInitial: 1000,
+  simMonthly: 250,
   simYears: 20,
-  simRate: 8.5,
+  simRate: 7.0,
+  newsCategory: 'All',
   registeredEvents: [1],
   user: firebaseService.currentUser || {
     id: 'usr_8849_gb',
@@ -775,29 +776,127 @@ function renderHomeScreen() {
       </div>
     </div>
 
+    <!-- 4 Cosmic Command Portals Grid (Directly below Search Bar) -->
+    <div class="cosmic-portals-grid">
+      <!-- Portal 1: Market Galaxy -->
+      <div class="cosmic-portal-card cyan" onclick="window.navigateTo('market')">
+        <div class="portal-icon-box portal-icon-cyan">
+          <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="portal-card-title">Market Galaxy</div>
+          <div class="portal-card-sub">LSE & Global Movers</div>
+        </div>
+      </div>
+
+      <!-- Portal 2: Learning Nexus -->
+      <div class="cosmic-portal-card blue" onclick="window.navigateTo('learn')">
+        <div class="portal-icon-box portal-icon-blue">
+          <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="portal-card-title">Learning Nexus</div>
+          <div class="portal-card-sub">6-Level Academy</div>
+        </div>
+      </div>
+
+      <!-- Portal 3: Portfolio Constellation -->
+      <div class="cosmic-portal-card gold" onclick="window.navigateTo('portfolio')">
+        <div class="portal-icon-box portal-icon-gold">
+          <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M11 2v20c-5.07-.5-9-4.79-9-10s3.93-9.5 9-10zm2 0v8.99L21.95 7.5C20.61 4.27 17.2 2 13 2z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="portal-card-title">Portfolio Constellation</div>
+          <div class="portal-card-sub">Holdings & Rebalance</div>
+        </div>
+      </div>
+
+      <!-- Portal 4: Community Forum -->
+      <div class="cosmic-portal-card emerald" onclick="window.navigateTo('community')">
+        <div class="portal-icon-box portal-icon-emerald">
+          <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 10H6v-2h12v2zm0-3H6V7h12v2z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="portal-card-title">Community Forum</div>
+          <div class="portal-card-sub">Discussions & Events</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FEATURED MARKET ASSETS (White sliding boxes directly below 4 boxes) -->
+    <div class="section-header-row" style="margin-top: 10px; margin-bottom: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+        <div>
+          <div class="section-label-gold">FEATURED MARKET ASSETS</div>
+          <div style="font-size: 15px; font-weight: 800; color: #FFFFFF; margin-top: 2px;">Live UK & Global Movers</div>
+        </div>
+        <div style="font-size: 12px; font-weight: 700; color: #00F0FF; cursor: pointer;" onclick="window.navigateTo('market')">Swipe →</div>
+      </div>
+    </div>
+
+    <!-- Horizontal White Sliding Carousel -->
+    <div class="market-movers-carousel">
+      ${state.assets.map(a => {
+        const isNeg = a.change.startsWith('-');
+        return `
+          <div class="carousel-card" onclick="window.navigateTo('asset_detail', '${a.ticker}')">
+            <div class="carousel-top-row">
+              <span class="asset-badge-${a.type === 'ETF' ? 'blue' : 'green'}">${a.type}</span>
+              <span class="${isNeg ? 'asset-change-red' : 'asset-change-green'}">
+                ${isNeg ? '↓ ' : '↑ '}${a.change}
+              </span>
+            </div>
+            <div class="carousel-ticker">${a.ticker}</div>
+            <div class="carousel-name" title="${a.name}">${a.name}</div>
+            <div class="carousel-price">${a.price}</div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+
     <!-- COMPOUNDING TRAJECTORY CARD (Image 1) -->
-    <div class="traj-card" onclick="window.navigateTo('simulator')" style="cursor:pointer;">
-      <div class="traj-label">COMPOUNDING TRAJECTORY</div>
-      <div class="traj-value">£${projectedValue.toLocaleString('en-GB')}</div>
-      <div class="traj-subtitle">Projected value at Year ${state.simYears} (@ ${state.simRate}% annual growth)</div>
+    <div class="traj-card" onclick="window.navigateTo('simulator')" style="cursor:pointer; margin-top: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <div class="traj-label">COMPOUNDING TRAJECTORY</div>
+          <div class="traj-value">£${projectedValue.toLocaleString('en-GB')}</div>
+          <div class="traj-subtitle">Projected value at Year ${state.simYears} (@ ${state.simRate}% annual growth)</div>
+        </div>
+        <div class="vertical-tag-pill">
+          <span>Interactive Curve</span>
+        </div>
+      </div>
 
       <!-- SVG curve chart -->
-      <div class="traj-chart-wrap">
-        <svg viewBox="0 0 300 100" preserveAspectRatio="none" style="width:100%;height:100px;display:block;">
+      <div class="traj-chart-wrap" style="margin-top: 14px;">
+        <svg viewBox="0 0 360 110" preserveAspectRatio="none" style="width:100%;height:110px;display:block;">
           <defs>
             <linearGradient id="curveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
               <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
               <stop offset="60%" style="stop-color:#10B981;stop-opacity:1" />
-              <stop offset="100%" style="stop-color:#c8a96e;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#FBBF24;stop-opacity:1" />
+            </linearGradient>
+            <linearGradient id="areaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" style="stop-color:#10B981;stop-opacity:0.35" />
+              <stop offset="100%" style="stop-color:#040B14;stop-opacity:0" />
             </linearGradient>
           </defs>
-          <path d="M0,95 C30,93 60,88 90,78 C120,65 150,48 180,32 C210,16 240,6 270,2 L300,1" fill="none" stroke="url(#curveGrad)" stroke-width="3" stroke-linecap="round"/>
-          <circle cx="300" cy="1" r="5" fill="#c8a96e"/>
+          <path d="M 10 95 Q 160 90, 240 60 T 345 15 L 345 110 L 10 110 Z" fill="url(#areaGrad)" />
+          <path d="M 10 95 Q 160 90, 240 60 T 345 15" fill="none" stroke="url(#curveGrad)" stroke-width="3.5" stroke-linecap="round"/>
+          <circle cx="345" cy="15" r="5" fill="#FBBF24" stroke="#FFFFFF" stroke-width="1.5" />
         </svg>
-        <div class="traj-axis-row">
+        <div class="traj-axis-row" style="display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: #94A3B8; margin-top: 4px;">
           <span>Year 0</span>
           <span>Year ${Math.round(state.simYears / 2)}</span>
-          <span style="color:#c8a96e;font-weight:700;">Year ${state.simYears}</span>
+          <span style="color:#FBBF24;font-weight:800;">Year ${state.simYears}</span>
         </div>
       </div>
 
@@ -816,7 +915,7 @@ function renderHomeScreen() {
     </div>
 
     <!-- ANALYTICS & WEALTH TOOLS (Image 2) -->
-    <div class="section-header-row" style="margin-top:20px;">
+    <div class="section-header-row" style="margin-top:20px; margin-bottom: 10px;">
       <div class="section-label-gold">ANALYTICS & WEALTH TOOLS</div>
     </div>
     <div class="tools-grid-2x2">
@@ -865,33 +964,13 @@ function renderHomeScreen() {
       </div>
     </div>
 
-    <!-- Regulatory Notice -->
-    <div class="reg-notice-card">
+    <!-- Regulatory & Educational Notice -->
+    <div class="reg-notice-card" style="margin-top: 18px;">
       <div class="reg-notice-icon">ℹ</div>
       <div class="reg-notice-text">
         <strong>Regulatory & Educational Notice</strong><br>
-        EB Wealth provides analytical intelligence and investment education. It does not provide personalized financial advice or execution brokerage. Capital is at risk; investments can fluctuate, and you may receive back less than originally invested. Regulated UK financial advice should be sought for personal decisions.
+        EB Wealth provides analytical intelligence and investment education. It does not provide personalized financial advice or execution brokerage. Capital is at risk; investments can fluctuate, and you may receive back less than originally invested. Regulated UK financial advice should be sought where appropriate.
       </div>
-    </div>
-
-    <!-- Featured Market Assets Section -->
-    <div class="section-header-row" style="margin-top:20px;">
-      <div class="section-label-gold">FEATURED MARKET ASSETS</div>
-      <div class="section-subtitle-muted">Live UK & Global Movers</div>
-    </div>
-
-    <!-- Horizontal Carousel -->
-    <div class="market-movers-carousel">
-      ${state.assets.map(a => `
-        <div class="carousel-card" onclick="window.navigateTo('asset_detail', '${a.ticker}')">
-          <div class="carousel-top-row">
-            <span class="asset-badge-gray">${a.type}</span>
-            <span class="asset-change-green">${a.change}</span>
-          </div>
-          <div class="carousel-ticker">${a.ticker}</div>
-          <div class="carousel-price">${a.price}</div>
-        </div>
-      `).join('')}
     </div>
   `;
 }
