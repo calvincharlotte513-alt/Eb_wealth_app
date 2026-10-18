@@ -3,52 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <meta http-equiv="Pragma" content="no-cache">
-  <meta http-equiv="Expires" content="0">
   <meta name="theme-color" content="#c8a96e">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="EB Wealth">
-  <title>EB Wealth — Institutional-Grade UK Investment Academy</title>
+  <title>EB Wealth — UK Investment Platform</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=2026.2.1">
+  <link rel="stylesheet" href="styles.css">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body>
   <div class="cosmic-bg"></div>
   <div class="cosmic-overlay"></div>
   <div id="app"></div>
-  <script type="module" src="app.js?v=2026.2.1"></script>
+  <script type="module" src="app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js?v=2026.2.1').then(reg => {
-          reg.update();
-        }).catch(() => {});
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
       });
     }
-
-    // Global clear cache utility for Vercel/PWA troubleshooting
-    window.clearAppCacheAndReload = function() {
-      if (confirm('Clear all cached application files and refresh with the latest updates from the server?')) {
-        if ('caches' in window) {
-          caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k)))).then(() => {
-            if ('serviceWorker' in navigator) {
-              navigator.serviceWorker.getRegistrations().then(regs => {
-                regs.forEach(r => r.unregister());
-                window.location.reload(true);
-              });
-            } else {
-              window.location.reload(true);
-            }
-          });
-        } else {
-          window.location.reload(true);
-        }
-      }
-    };
   </script>
 </body>
 </html>
