@@ -79,7 +79,7 @@ html, body {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(180deg, rgba(4, 11, 20, 0.45) 0%, rgba(6, 16, 30, 0.6) 45%, rgba(4, 10, 18, 0.75) 100%);
+  background: linear-gradient(180deg, rgba(4, 11, 20, 0.2) 0%, rgba(6, 16, 30, 0.3) 45%, rgba(4, 10, 18, 0.45) 100%);
   z-index: -1;
   pointer-events: none;
 }
@@ -92,9 +92,7 @@ html, body {
   display: flex;
   flex-direction: column;
   position: relative;
-  background: rgba(4, 11, 20, 0.62);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: transparent;
   transition: max-width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -131,38 +129,6 @@ html, body {
   }
 }
 
-/* Simulated Phone Status Bar (Exact match to mobile screenshot 14:33) */
-.mobile-status-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 18px 4px 18px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #94A3B8;
-  background: rgba(4, 11, 20, 0.98);
-  letter-spacing: 0.3px;
-  user-select: none;
-}
-
-.status-bar-icons {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 10px;
-  color: #64748B;
-}
-
-.battery-pill {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid #64748B;
-  border-radius: 3px;
-  padding: 1px 3px;
-  font-size: 9px;
-  font-weight: 800;
-  color: #10B981;
-}
 
 /* TOP APP BAR (Exact match to mobile top bar) */
 .mobile-top-bar {
@@ -925,34 +891,48 @@ html, body {
   box-shadow: 0 0 8px #00F0FF;
 }
 
-/* FLOATING CYBER FROSTED-GLASS BOTTOM NAVIGATION DOCK (Exact match) */
+/* STICKY BOTTOM APP NAVIGATION BAR (Sticky like native app) */
 .floating-bottom-dock-container {
   position: fixed;
   bottom: 0;
   left: 0;
-  width: 100vw;
+  right: 0;
+  width: 100%;
   display: flex;
   justify-content: center;
-  padding: 0 16px 16px 16px;
-  z-index: 100;
+  z-index: 1000;
   pointer-events: none;
 }
 
 .floating-bottom-dock {
   max-width: 440px;
   width: 100%;
-  height: 68px;
-  background: rgba(7, 19, 34, 0.92);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border-radius: 34px;
-  border: 1.5px solid rgba(0, 240, 255, 0.85);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 24px rgba(0, 240, 255, 0.35);
+  height: 64px;
+  background: rgba(6, 16, 30, 0.96);
+  border-top: 1.5px solid rgba(0, 240, 255, 0.45);
+  border-left: 1px solid rgba(0, 240, 255, 0.2);
+  border-right: 1px solid rgba(0, 240, 255, 0.2);
+  border-bottom: none;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.9), 0 0 24px rgba(0, 240, 255, 0.25);
   display: flex;
   align-items: center;
   justify-content: space-around;
   padding: 0 10px;
   pointer-events: auto;
+}
+
+@media (max-width: 859px) {
+  .floating-bottom-dock {
+    max-width: 100%;
+    border-radius: 0;
+    border-top: 1.5px solid rgba(0, 240, 255, 0.4);
+    height: 66px;
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 6px);
+  }
 }
 
 .dock-nav-item {

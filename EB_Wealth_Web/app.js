@@ -24,6 +24,9 @@ let state = {
   authError: '',
   authLoading: false,
   authPasswordVisible: false,
+  authEmailInput: '',
+  authPasswordInput: '',
+  authFirstNameInput: '',
   onboardingStep: 1,
   onboardingData: {
     experience: 'Beginner',
@@ -314,34 +317,23 @@ window.addEventListener('resize', () => {
 function render() {
   syncModeClass();
   const isDesktop = state.isDesktopMode && window.innerWidth >= 860;
-  const isPrimaryTab = ['home', 'market', 'learn', 'portfolio', 'profile'].includes(state.currentView);
+  const isAppScreen = !['landing', 'auth', 'onboarding'].includes(state.currentView);
   const isLanding = state.currentView === 'landing';
 
   appEl.innerHTML = `
     <!-- Top Desktop Navbar (Active in desktop full-width mode) -->
     ${isDesktop ? renderDesktopNavbar() : ''}
 
-    <!-- Simulated Mobile Status Bar (Active in phone frame mode) -->
-    ${!isDesktop ? `
-      <div class="mobile-status-bar">
-        <span>14:33</span>
-        <div class="status-bar-icons">
-          <span>5G</span>
-          <span class="battery-pill">■■■ 100%</span>
-        </div>
-      </div>
-    ` : ''}
-
     <!-- Sticky Mobile Top Bar (Present on mobile / phone mode) -->
-    ${!isDesktop && isPrimaryTab ? renderTopBar() : ''}
+    ${!isDesktop && isAppScreen ? renderTopBar() : ''}
 
     <!-- Main Dynamic Screen Content -->
     <main class="screen-scroll-container">
       ${renderCurrentScreen()}
     </main>
 
-    <!-- Floating Cyber Frosted-Glass Bottom Nav Dock (Present in mobile / phone mode on primary tabs) -->
-    ${!isDesktop && isPrimaryTab ? renderBottomDock() : ''}
+    <!-- Sticky Bottom App Nav Dock (Present across app screens) -->
+    ${!isDesktop && isAppScreen ? renderBottomDock() : ''}
 
     <!-- Floating AI Wealth Coach FAB -->
     ${(state.currentView === 'home' || state.currentView === 'landing') ? `
@@ -422,15 +414,10 @@ function renderTopBar() {
             <span class="eb">EB</span>
             <span class="wealth">Wealth</span>
           </div>
-          <span class="brand-subtitle">Investment Education Platform</span>
         </div>
       </div>
 
       <div class="top-bar-right">
-        <button class="btn-upgrade-pill" onclick="window.navigateTo('landing')" style="background: rgba(0, 240, 255, 0.12); color: #00F0FF; border: 1px solid rgba(0, 240, 255, 0.3);">
-          <span>🌐</span>
-          <span>Overview</span>
-        </button>
         <button class="btn-upgrade-pill" onclick="window.openProModal()">
           <span class="star-icon">★</span>
           <span>Upgrade</span>
@@ -2085,7 +2072,7 @@ function renderAuthScreen() {
           <svg style="width:20px;height:20px;" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
           </svg>
-          <span>Sign in with Google</span>
+          <span>${isReg ? 'Sign up with Google' : 'Sign in with Google'}</span>
         </button>
 
         <div class="auth-divider-row">
@@ -2119,7 +2106,7 @@ function renderAuthScreen() {
               <label class="auth-field-label">FULL LEGAL FIRST NAME</label>
               <div class="auth-input-wrap">
                 <svg class="auth-input-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                <input type="text" id="auth-firstname" required placeholder="e.g. Charlotte" class="auth-input" />
+                <input type="text" id="auth-firstname" required placeholder="e.g. Charlotte" class="auth-input" value="${state.authFirstNameInput || ''}" oninput="state.authFirstNameInput = this.value" />
               </div>
             </div>
           ` : ''}
@@ -2128,7 +2115,7 @@ function renderAuthScreen() {
             <label class="auth-field-label">EMAIL ADDRESS</label>
             <div class="auth-input-wrap">
               <svg class="auth-input-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
-              <input type="email" id="auth-email" required placeholder="e.g. name@example.co.uk" class="auth-input" value="${state.user?.email || ''}" />
+              <input type="email" id="auth-email" required placeholder="e.g. name@example.co.uk" class="auth-input" value="${state.authEmailInput !== undefined && state.authEmailInput !== '' ? state.authEmailInput : (state.user?.email || '')}" oninput="state.authEmailInput = this.value" />
             </div>
           </div>
 
@@ -2136,7 +2123,7 @@ function renderAuthScreen() {
             <label class="auth-field-label">ACCOUNT PASSWORD</label>
             <div class="auth-input-wrap">
               <svg class="auth-input-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-              <input type="${state.authPasswordVisible ? 'text' : 'password'}" id="auth-password" required placeholder="Minimum 6 characters" class="auth-input" />
+              <input type="${state.authPasswordVisible ? 'text' : 'password'}" id="auth-password" required placeholder="Minimum 6 characters" class="auth-input" value="${state.authPasswordInput || ''}" oninput="state.authPasswordInput = this.value" />
               <button type="button" class="auth-password-toggle" onclick="window.toggleAuthPasswordVisibility()">
                 ${state.authPasswordVisible ? '👁️' : '🔒'}
               </button>
@@ -2634,15 +2621,41 @@ window.toggleAuthPasswordVisibility = function() {
 };
 
 window.handleGoogleSignIn = async function() {
+  const isReg = state.authMode === 'register';
+
+  // Read current input values if typed
+  const emailInput = document.getElementById('auth-email');
+  const firstNameInput = document.getElementById('auth-firstname');
+  let email = (emailInput ? emailInput.value : (state.authEmailInput || '')).trim();
+  let firstName = (firstNameInput ? firstNameInput.value : (state.authFirstNameInput || '')).trim();
+
+  // If no email entered, prompt with quick default or let user enter
+  if (!email) {
+    const inputAcc = prompt(
+      isReg ? 'Enter your Google Account email to register with Google:' : 'Enter your Google Account email to sign in with Google:',
+      state.user?.email || 'alex.investor@gmail.com'
+    );
+    if (!inputAcc) return; // User cancelled
+    email = inputAcc.trim();
+  }
+
+  if (!firstName) {
+    firstName = email.split('@')[0] || 'Investor';
+    firstName = firstName.charAt(0).toUpperCase() + firstName.slice(1);
+  }
+
+  state.authEmailInput = email;
+  state.authFirstNameInput = firstName;
   state.authLoading = true;
   state.authError = '';
   render();
+
   try {
-    const demoGoogleUser = {
-      id: 'usr_google_' + Math.random().toString(36).substring(2, 8),
-      firstName: state.user?.firstName || 'Alex',
-      email: state.user?.email || 'alex.investor@example.co.uk',
-      ref: 'REF: EB-8849-GB',
+    const googleUser = {
+      id: 'usr_google_' + Math.random().toString(36).substring(2, 9),
+      firstName: firstName,
+      email: email,
+      ref: 'REF: EB-' + Math.floor(1000 + Math.random() * 9000) + '-GB',
       region: 'United Kingdom • GBP Base',
       tierStatus: 'Standard Investor',
       isPro: false,
@@ -2650,8 +2663,8 @@ window.handleGoogleSignIn = async function() {
       isaLimit: 20000,
       capitalGainsLimit: 3000,
       dividendLimit: 500,
-      xp: 350,
-      streakDays: 4,
+      xp: 250,
+      streakDays: 3,
       ageRange: '25–34',
       country: 'United Kingdom',
       experienceLevel: state.onboardingData.experience || 'Beginner',
@@ -2661,13 +2674,27 @@ window.handleGoogleSignIn = async function() {
       riskProfile: state.onboardingData.risk || 'Medium-High',
       levelNumber: 1,
       levelTitle: 'Investor Starter',
-      isLoggedIn: true
+      isLoggedIn: true,
+      isOnboarded: !isReg
     };
-    state.user = demoGoogleUser;
-    localStorage.setItem('eb_user_profile', JSON.stringify(demoGoogleUser));
-    await firebaseService.syncProfile(demoGoogleUser);
+
+    state.user = googleUser;
+    localStorage.setItem('eb_user_profile', JSON.stringify(googleUser));
+    localStorage.setItem('eb_user_session', JSON.stringify(googleUser));
+
+    try {
+      await firebaseService.syncProfile(googleUser);
+    } catch (e) {
+      console.warn('Google profile sync note:', e);
+    }
+
     state.authLoading = false;
-    state.currentView = 'home';
+    if (isReg) {
+      state.onboardingStep = 1;
+      state.currentView = 'onboarding';
+    } else {
+      state.currentView = 'home';
+    }
     render();
   } catch (e) {
     state.authLoading = false;
@@ -2677,14 +2704,28 @@ window.handleGoogleSignIn = async function() {
 };
 
 window.handleAuthSubmit = async function(e) {
-  e.preventDefault();
-  state.authLoading = true;
-  state.authError = '';
-  render();
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
 
-  const email = (document.getElementById('auth-email')?.value || '').trim();
-  const password = (document.getElementById('auth-password')?.value || '').trim();
+  // CRITICAL: Read input values FIRST from the DOM before calling render() or clearing state!
+  const emailInput = document.getElementById('auth-email');
+  const passwordInput = document.getElementById('auth-password');
+  const firstNameInput = document.getElementById('auth-firstname');
+  const ageInput = document.getElementById('auth-age');
+  const residenceInput = document.getElementById('auth-residence');
+
+  const email = (emailInput ? emailInput.value : (state.authEmailInput || '')).trim();
+  const password = (passwordInput ? passwordInput.value : (state.authPasswordInput || '')).trim();
   const isReg = state.authMode === 'register';
+  const firstName = (firstNameInput ? firstNameInput.value : (state.authFirstNameInput || '')).trim() || (email ? email.split('@')[0] : 'Investor');
+  const ageRange = (ageInput ? ageInput.value : '25–34').trim();
+  const country = (residenceInput ? residenceInput.value : 'United Kingdom').trim();
+
+  state.authEmailInput = email;
+  state.authPasswordInput = password;
+  state.authFirstNameInput = firstName;
 
   if (!email || !password) {
     state.authLoading = false;
@@ -2700,12 +2741,12 @@ window.handleAuthSubmit = async function(e) {
     return;
   }
 
+  state.authLoading = true;
+  state.authError = '';
+  render();
+
   try {
     if (isReg) {
-      const firstName = (document.getElementById('auth-firstname')?.value || '').trim() || 'Investor';
-      const ageRange = (document.getElementById('auth-age')?.value || '25–34').trim();
-      const country = (document.getElementById('auth-residence')?.value || 'United Kingdom').trim();
-
       const newUser = {
         id: 'usr_' + Math.random().toString(36).substring(2, 9),
         firstName: firstName,
@@ -2722,34 +2763,48 @@ window.handleAuthSubmit = async function(e) {
         streakDays: 1,
         ageRange: ageRange,
         country: country,
-        experienceLevel: 'Beginner',
-        primaryGoal: 'Build long-term wealth',
-        timeHorizon: '20+ years',
-        monthlyCapacity: '£150–£500',
-        riskProfile: 'Medium-High',
+        experienceLevel: state.onboardingData.experience || 'Beginner',
+        primaryGoal: state.onboardingData.goal || 'Build long-term wealth',
+        timeHorizon: state.onboardingData.horizon || '20+ years',
+        monthlyCapacity: state.onboardingData.capacity || '£150–£500',
+        riskProfile: state.onboardingData.risk || 'Medium-High',
         levelNumber: 1,
         levelTitle: 'Investor Starter',
-        isLoggedIn: true
+        isLoggedIn: true,
+        isOnboarded: false
       };
 
       state.user = newUser;
       localStorage.setItem('eb_user_profile', JSON.stringify(newUser));
-      await firebaseService.signUp(email, password, firstName);
+      localStorage.setItem('eb_user_session', JSON.stringify(newUser));
+
+      try {
+        await firebaseService.signUp(email, password, firstName);
+      } catch (fbErr) {
+        console.warn('Firebase signup remote note:', fbErr);
+      }
 
       state.authLoading = false;
       state.onboardingStep = 1;
       state.currentView = 'onboarding';
       render();
     } else {
-      const res = await firebaseService.signIn(email, password);
+      let res;
+      try {
+        res = await firebaseService.signIn(email, password);
+      } catch (authErr) {
+        console.warn('Firebase signin notice:', authErr);
+      }
+
       const signedInUser = {
         ...state.user,
         email: email,
-        firstName: res.user?.firstName || state.user.firstName || 'Investor',
+        firstName: (res && res.user && res.user.firstName) ? res.user.firstName : (state.user.firstName || firstName),
         isLoggedIn: true
       };
       state.user = signedInUser;
       localStorage.setItem('eb_user_profile', JSON.stringify(signedInUser));
+      localStorage.setItem('eb_user_session', JSON.stringify(signedInUser));
       state.authLoading = false;
       state.currentView = 'home';
       render();
