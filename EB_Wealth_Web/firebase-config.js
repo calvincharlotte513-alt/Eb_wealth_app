@@ -2,7 +2,7 @@
 // Project: com-aistudio-ebwealth-kq-f6b41
 // Named Firestore Database: ai-studio-android-ebwealth-8a97b416-8f81-404d-8d7f-be206ae221d3
 
-export const firebaseConfig = {
+const defaultFirebaseConfig = {
   apiKey: "AIzaSyChpopTlX_GpukhBua2DdAQOHul1UFrSiM",
   authDomain: "com-aistudio-ebwealth-kq-f6b41.firebaseapp.com",
   projectId: "com-aistudio-ebwealth-kq-f6b41",
@@ -12,10 +12,30 @@ export const firebaseConfig = {
   databaseId: "ai-studio-android-ebwealth-8a97b416-8f81-404d-8d7f-be206ae221d3"
 };
 
+let storedCustom = null;
+try {
+  const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('eb_custom_firebase_config') : null;
+  if (raw) storedCustom = JSON.parse(raw);
+} catch (e) {}
+
+export const firebaseConfig = storedCustom || defaultFirebaseConfig;
+
 export const REST_CONFIG = {
   authBase: "https://identitytoolkit.googleapis.com/v1/accounts",
-  firestoreBase: `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/${firebaseConfig.databaseId}/documents`
+  firestoreBase: `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/${firebaseConfig.databaseId || '(default)'}/documents`
 };
+
+export function saveCustomDatabaseConfig(config) {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem('eb_custom_firebase_config', JSON.stringify(config));
+  }
+}
+
+export function resetToDefaultDatabase() {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.removeItem('eb_custom_firebase_config');
+  }
+}
 
 export class WebFirebaseService {
   constructor() {

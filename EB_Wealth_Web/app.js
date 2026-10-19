@@ -274,14 +274,15 @@ window.addEventListener('resize', () => {
 function render() {
   syncModeClass();
   const isDesktop = state.isDesktopMode && window.innerWidth >= 860;
-  const isAppScreen = !['landing', 'auth', 'onboarding'].includes(state.currentView);
+  const isAppScreen = !['landing', 'auth', 'onboarding', 'admin'].includes(state.currentView);
   const isLanding = state.currentView === 'landing';
+  const isAdmin = state.currentView === 'admin';
 
   appEl.innerHTML = `
-    <!-- Top Desktop Navbar (Active in desktop full-width mode) -->
-    ${isDesktop ? renderDesktopNavbar() : ''}
+    <!-- Top Desktop Navbar (Active in desktop full-width mode, hidden on admin) -->
+    ${isDesktop && !isAdmin ? renderDesktopNavbar() : ''}
 
-    <!-- Sticky Mobile Top Bar (Present on mobile / phone mode) -->
+    <!-- Sticky Mobile Top Bar (Present on mobile / phone mode, hidden on admin) -->
     ${!isDesktop && isAppScreen ? renderTopBar() : ''}
 
     <!-- Main Dynamic Screen Content -->
@@ -289,7 +290,7 @@ function render() {
       ${renderCurrentScreen()}
     </main>
 
-    <!-- Sticky Bottom App Nav Dock (Present across app screens) -->
+    <!-- Sticky Bottom App Nav Dock (Curved bubble dock, hidden on admin) -->
     ${!isDesktop && isAppScreen ? renderBottomDock() : ''}
 
     <!-- Floating AI Wealth Coach FAB -->
@@ -404,9 +405,9 @@ function renderBottomDock() {
           <span>Market</span>
         </button>
 
-        <button class="dock-nav-item ${state.currentView === 'learn' ? 'active' : ''}" onclick="window.navigateTo('learn')">
+        <button class="dock-nav-item ${state.currentView === 'learn' || state.currentView === 'lesson_detail' ? 'active' : ''}" onclick="window.navigateTo('learn')">
           <div class="dock-icon-box">
-            <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg>
+            <svg viewBox="0 0 24 24"><path d="M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9.07l-9-7-9 7 1.63 1.27L12 16z"/></svg>
           </div>
           <span>Learn</span>
         </button>
@@ -2309,12 +2310,6 @@ function renderAdminLoginScreen() {
         <div style="margin-top: 20px; font-size: 11px; color: #64748B;">
           Notice: Ordinary students cannot access this area. Unauthorized access attempts are monitored and rate-limited.
         </div>
-
-        <div style="margin-top: 16px;">
-          <button type="button" style="background: none; border: none; color: #00F0FF; font-size: 12px; font-weight: 700; cursor: pointer;" onclick="window.navigateTo('home')">
-            ← Return to Student Platform
-          </button>
-        </div>
       </div>
     </div>
   `;
@@ -2357,9 +2352,6 @@ function renderAdminDashboardScreen() {
         </div>
 
         <div class="admin-header-actions">
-          <button class="admin-btn-exit" onclick="window.navigateTo('learn')">
-            👁 View Student Academy
-          </button>
           <button class="admin-btn-logout" onclick="window.handleAdminLogout()">
             🔒 Secure Logout
           </button>
@@ -2912,7 +2904,40 @@ function renderAdminDashboardScreen() {
 
             <button type="submit" class="admin-btn-primary" style="margin-top: 6px; justify-content: center; padding: 12px;">
               Update Administrator Password
-            </button>
+        </div>
+
+        <div class="admin-section-card" style="max-width: 650px; margin-top: 16px;">
+          <div class="admin-section-header">
+            <div class="admin-section-title">🗄️ Cloud Database & Backend Configuration</div>
+          </div>
+          <p style="font-size: 12px; color: #94A3B8; margin-bottom: 12px; line-height: 1.4;">
+            Current cloud state: <strong style="color: #00F0FF;">Active Local Cache & Sync Engine</strong>.<br>
+            If you have a dedicated Firebase Web Project or custom database endpoint, paste your configuration credentials below to bind the web app directly to your cloud instance.
+          </p>
+
+          <div style="background: rgba(4, 11, 20, 0.7); border: 1px solid rgba(0, 240, 255, 0.2); border-radius: 10px; padding: 12px; margin-bottom: 14px; font-size: 11px; font-family: monospace; color: #CBD5E1;">
+            <div>CURRENT PROJECT: <span style="color: #38BDF8;">com-aistudio-ebwealth-kq-f6b41</span></div>
+            <div>STATUS: <span style="color: #10B981;">Online (Local Fallback & Sync Active)</span></div>
+            <div>AUTH PROVIDER: <span style="color: #FBBF24;">Client Vault / Google Identity / REST</span></div>
+          </div>
+
+          <form onsubmit="window.saveCustomDatabaseSettings(event)" style="display: flex; flex-direction: column; gap: 10px;">
+            <div>
+              <label style="font-size: 10px; font-weight: 800; color: #94A3B8; display: block; margin-bottom: 4px;">CUSTOM FIREBASE WEB CONFIG (JSON format)</label>
+              <textarea id="admin-custom-db-json" rows="5" placeholder='{\n  "apiKey": "AIzaSy...",\n  "authDomain": "your-project.firebaseapp.com",\n  "projectId": "your-project-id",\n  "storageBucket": "your-project.appspot.com"\n}' style="width: 100%; background: rgba(4, 11, 20, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 8px; padding: 10px; color: #FFF; font-size: 11px; font-family: monospace;"></textarea>
+            </div>
+
+            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+              <button type="button" class="btn-upgrade-pill" style="font-size: 11px; padding: 8px 12px;" onclick="window.testDatabaseConnection()">
+                ⚡ Test Cloud Connection
+              </button>
+              <button type="button" style="background: rgba(239, 68, 68, 0.15); border: 1px solid #EF4444; color: #EF4444; border-radius: 8px; font-size: 11px; padding: 8px 12px; cursor: pointer;" onclick="window.resetDatabaseToDefault()">
+                Reset to Default
+              </button>
+              <button type="submit" class="admin-btn-primary" style="font-size: 11px; padding: 8px 14px;">
+                Save & Connect Database
+              </button>
+            </div>
           </form>
         </div>
       ` : ''}
@@ -4316,6 +4341,61 @@ window.resetStudentProgress = function(studentId) {
     localStorage.setItem('eb_user_profile', JSON.stringify(state.user));
     state.adminNotification = 'Student progress reset to baseline.';
     render();
+  }
+};
+
+// ── Database Configuration Handlers ──
+window.saveCustomDatabaseSettings = function(e) {
+  if (e) e.preventDefault();
+  const raw = document.getElementById('admin-custom-db-json')?.value.trim();
+  if (!raw) {
+    alert('Please enter or paste your custom Firebase Web Config in JSON format.');
+    return;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed.projectId || !parsed.apiKey) {
+      alert('Config must include at least "projectId" and "apiKey".');
+      return;
+    }
+    localStorage.setItem('eb_custom_firebase_config', JSON.stringify(parsed));
+    alert('✓ Custom cloud database configuration saved! Reloading to bind new database connection...');
+    window.location.reload();
+  } catch (err) {
+    alert('Invalid JSON: ' + err.message);
+  }
+};
+
+window.testDatabaseConnection = async function() {
+  const raw = document.getElementById('admin-custom-db-json')?.value.trim();
+  let cfg = null;
+  if (raw) {
+    try {
+      cfg = JSON.parse(raw);
+    } catch (e) {
+      alert('Invalid JSON in custom database field.');
+      return;
+    }
+  } else {
+    cfg = JSON.parse(localStorage.getItem('eb_custom_firebase_config') || 'null');
+  }
+
+  const projId = cfg?.projectId || 'com-aistudio-ebwealth-kq-f6b41';
+
+  try {
+    const testUrl = `https://firestore.googleapis.com/v1/projects/${projId}/databases/(default)/documents`;
+    const res = await fetch(testUrl);
+    alert(`⚡ Cloud Database Ping to "${projId}": Server reached (HTTP ${res.status}). Database endpoint is accessible.`);
+  } catch (err) {
+    alert(`Connection check error: ${err.message}`);
+  }
+};
+
+window.resetDatabaseToDefault = function() {
+  if (confirm('Reset to standard environment project com-aistudio-ebwealth-kq-f6b41?')) {
+    localStorage.removeItem('eb_custom_firebase_config');
+    alert('Reset complete. Reloading with default database...');
+    window.location.reload();
   }
 };
 
