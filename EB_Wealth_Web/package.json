@@ -1,6 +1,7 @@
 {
   "name": "eb-wealth-web",
   "version": "1.0.0",
+  "type": "module",
   "description": "EB Wealth - Institutional-Grade UK Investment Web Platform",
   "scripts": {
     "start": "npx serve . -l 3000",
