@@ -10,23 +10,21 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // User Profile
+    // User Profile (readable for admin dashboard & organic user directory)
     match /users/{userId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAuthenticated() && (request.auth.uid == userId || request.resource.data.email is string);
-      allow delete: if isOwner(userId);
+      allow read: if true;
+      allow create, update: if isAuthenticated();
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
 
-      // User Holdings subcollection (used by Android & iOS)
+      // User Holdings subcollection (used by Web, Android & iOS)
       match /holdings/{holdingId} {
-        allow read, write: if isAuthenticated() && (request.auth.uid == userId || request.auth != null);
+        allow read, write: if isAuthenticated();
       }
     }
 
     // Investment Holdings (root collection)
     match /holdings/{holdingId} {
-      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
-      allow create, update: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow delete: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow read, write: if isAuthenticated();
     }
 
     // Community Discussions

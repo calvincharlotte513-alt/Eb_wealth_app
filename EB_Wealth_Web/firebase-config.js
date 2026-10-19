@@ -236,6 +236,86 @@ export class WebFirebaseService {
     }
   }
 
+  async fetchHoldings(userId, idToken) {
+    const uid = userId || this.currentUser?.id;
+    const token = idToken || this.currentUser?.idToken;
+    if (!uid) return [];
+    try {
+      const headers = {};
+      if (token && token !== "offline_mock_token") {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const url = `${REST_CONFIG.firestoreBase}/users/${uid}/holdings`;
+      const res = await fetch(url, { headers });
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!data.documents) return [];
+      return data.documents.map(doc => {
+        const f = doc.fields || {};
+        return {
+          ticker: f.ticker?.stringValue || doc.name.split("/").pop(),
+          name: f.name?.stringValue || "",
+          assetType: f.assetType?.stringValue || "ETF",
+          allocationCategory: f.allocationCategory?.stringValue || "Global Equities",
+          accountType: f.accountType?.stringValue || "Stocks & Shares ISA",
+          currency: f.currency?.stringValue || "GBP",
+          shares: parseFloat(f.shares?.doubleValue || f.shares?.integerValue || 0),
+          avgBuyPrice: parseFloat(f.avgBuyPrice?.doubleValue || f.avgBuyPrice?.integerValue || 0),
+          currentPrice: parseFloat(f.currentPrice?.doubleValue || f.currentPrice?.integerValue || 0)
+        };
+      });
+    } catch (err) {
+      console.warn("Fetch holdings error:", err);
+      return [];
+    }
+  }
+
+  async deleteHolding(ticker) {
+    const user = this.currentUser;
+    if (!user || !user.id) return false;
+    try {
+      const headers = {};
+      if (user.idToken && user.idToken !== "offline_mock_token") {
+        headers["Authorization"] = `Bearer ${user.idToken}`;
+      }
+      const url = `${REST_CONFIG.firestoreBase}/users/${user.id}/holdings/${ticker}`;
+      await fetch(url, { method: "DELETE", headers });
+      return true;
+    } catch (err) {
+      console.warn("Delete holding error:", err);
+      return false;
+    }
+  }
+
+  async fetchAllOrganicUsers() {
+    try {
+      const url = `${REST_CONFIG.firestoreBase}/users?pageSize=100`;
+      const res = await fetch(url);
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!data.documents) return [];
+      return data.documents.map(doc => {
+        const f = doc.fields || {};
+        const uid = doc.name.split("/").pop();
+        return {
+          id: uid,
+          firstName: f.firstName?.stringValue || "Investor",
+          email: f.email?.stringValue || "",
+          experienceLevel: f.experienceLevel?.stringValue || "Beginner",
+          primaryGoal: f.primaryGoal?.stringValue || "Build long-term wealth",
+          xp: parseInt(f.xp?.integerValue || "0"),
+          streakDays: parseInt(f.streakDays?.integerValue || "0"),
+          isPro: !!f.isPro?.booleanValue,
+          isOnboarded: !!f.isOnboarded?.booleanValue,
+          createdAtFormatted: doc.createTime ? new Date(doc.createTime).toLocaleDateString("en-GB", { day: '2-digit', month: 'short', year: 'numeric' }) : "Recent"
+        };
+      });
+    } catch (err) {
+      console.warn("fetchAllOrganicUsers error:", err);
+      return [];
+    }
+  }
+
   async fetchCommunityPosts() {
     try {
       const url = `${REST_CONFIG.firestoreBase}/community_posts?pageSize=30`;
